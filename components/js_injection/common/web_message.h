@@ -6,6 +6,8 @@
 #define COMPONENTS_JS_INJECTION_COMMON_WEB_MESSAGE_H_
 
 #include <string>
+#include <vector>
+
 #include "third_party/abseil-cpp/absl/types/variant.h"
 
 namespace js_injection {
@@ -19,7 +21,7 @@ struct JsWebMessage {
   JsWebMessage& operator=(JsWebMessage&) = delete;
   JsWebMessage& operator=(JsWebMessage&&);
 
-  absl::variant<std::u16string> payload;
+  absl::variant<std::u16string, std::vector<uint8_t>> payload;
 };
 }  // namespace js_injection
 
