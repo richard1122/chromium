@@ -33,6 +33,7 @@ import org.chromium.base.test.util.Criteria;
 import org.chromium.base.test.util.CriteriaHelper;
 import org.chromium.base.test.util.CriteriaNotSatisfiedException;
 import org.chromium.base.test.util.Feature;
+import org.chromium.content_public.browser.MessagePayload;
 import org.chromium.content_public.browser.MessagePort;
 import org.chromium.content_public.browser.SelectionPopupController;
 import org.chromium.content_public.browser.test.util.DOMUtils;
@@ -465,9 +466,10 @@ public class PopupWindowTest {
         }
 
         @Override
-        public void onPostMessage(String message, Uri sourceOrigin, boolean isMainFrame,
+        public void onPostMessage(MessagePayload payload, Uri sourceOrigin, boolean isMainFrame,
                 JsReplyProxy replyProxy, MessagePort[] ports) {
-            mQueue.add(new Data(message, isMainFrame, replyProxy));
+            // TODO(crbug.com/1374142: Add array buffer test.
+            mQueue.add(new Data(payload.getAsString(), isMainFrame, replyProxy));
         }
 
         public Data waitForOnPostMessage() throws Exception {
