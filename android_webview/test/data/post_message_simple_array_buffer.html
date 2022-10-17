@@ -2,11 +2,8 @@
 
 <head>
   <script>
-    const buffer = new ArrayBuffer(10);
-    const view = new Uint8Array(buffer);
-    for (let i = 0; i != view.byteLength; ++i)
-      view[i] = i;
-    myObject.postMessage(buffer);
+    const view = new TextEncoder().encode("Hello");
+    myObject.postMessage(view.buffer);
   </script>
 </head>
 

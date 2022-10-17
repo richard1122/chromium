@@ -33,6 +33,7 @@ import org.chromium.net.test.EmbeddedTestServer;
 import org.chromium.net.test.EmbeddedTestServerRule;
 import org.chromium.net.test.util.TestWebServer;
 
+import java.nio.charset.StandardCharsets;
 import java.util.concurrent.LinkedBlockingQueue;
 
 /**
@@ -155,7 +156,7 @@ public class JsJavaInteractionTest {
         TestWebMessageListener.Data data = mListener.waitForOnPostMessage();
 
         assertUrlHasOrigin(url, data.mSourceOrigin);
-        Assert.assertEquals(HELLO, data.getAsString());
+        Assert.assertArrayEquals(HELLO.getBytes(StandardCharsets.UTF_8), data.getAsArrayBuffer());
         Assert.assertTrue(data.mIsMainFrame);
         Assert.assertEquals(0, data.mPorts.length);
 
