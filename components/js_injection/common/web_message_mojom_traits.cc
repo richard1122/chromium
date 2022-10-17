@@ -20,16 +20,18 @@ bool UnionTraits<js_injection::mojom::JsWebMessageDataView,
     if (!r.ReadStringValue(&string_value))
       return false;
     out->payload = std::move(string_value);
+    return true;
   } else if (r.is_array_buffer_value()) {
     mojo_base::BigBufferView array_buffer_view;
     if (!r.ReadArrayBufferValue(&array_buffer_view))
       return false;
     out->payload = std::vector<uint8_t>(array_buffer_view.data().begin(),
                                         array_buffer_view.data().end());
+    return true;
+  } else {
+    NOTREACHED() << "Unknown type for JsWebMessage mojo.";
+    return false;
   }
-
-  NOTREACHED() << "Unknown type for JsWebMessage mojo.";
-  return false;
 }
 
 }  // namespace mojo
