@@ -6,11 +6,12 @@
 #define COMPONENTS_JS_INJECTION_COMMON_WEB_MESSAGE_MOJOM_TRAITS_H_
 
 #include <string>
-#include "absl/types/variant.h"
+
 #include "components/js_injection/common/interfaces.mojom.h"
 #include "components/js_injection/common/web_message.h"
 #include "mojo/public/cpp/base/big_buffer.h"
 #include "mojo/public/cpp/bindings/union_traits.h"
+#include "third_party/abseil-cpp/absl/types/variant.h"
 
 namespace mojo {
 
