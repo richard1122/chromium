@@ -592,13 +592,13 @@ public class PopupWindowTest {
         Assert.assertEquals("clicked", clicked.mMessage);
 
         // Step 6. Send an arbitrary message to call window.open on javascript: URI.
-        iframeReplyProxy.postMessage("hello");
+        iframeReplyProxy.postMessage(new MessagePayload("hello"));
         TestWebMessageListener.Data data = webMessageListener.waitForOnPostMessage();
         Assert.assertEquals("done", data.mMessage);
 
         // Step 7. Send an arbitrary message to trigger the check. Main frame will check if there is
         // an injected element by running |windowOpenJavaScript|.
-        mainFrameReplyProxy.postMessage("hello");
+        mainFrameReplyProxy.postMessage(new MessagePayload("hello"));
 
         // If |succeed| received, then there was no injection.
         TestWebMessageListener.Data data2 = webMessageListener.waitForOnPostMessage();
