@@ -697,7 +697,7 @@ public class JsJavaInteractionTest {
         final OnReceivedTitleHelper onReceivedTitleHelper =
                 mContentsClient.getOnReceivedTitleHelper();
         final int titleCallCount = onReceivedTitleHelper.getCallCount();
-        data.mReplyProxy.postMessage(NEW_TITLE);
+        data.mReplyProxy.postMessage(new MessagePayload(NEW_TITLE));
         onReceivedTitleHelper.waitForCallback(titleCallCount);
 
         Assert.assertEquals(NEW_TITLE, onReceivedTitleHelper.getTitle());
@@ -742,9 +742,9 @@ public class JsJavaInteractionTest {
         Assert.assertEquals(message, data2.getAsString());
 
         // Targeting myObject.
-        data.mReplyProxy.postMessage(HELLO);
+        data.mReplyProxy.postMessage(new MessagePayload(HELLO));
         // Targeting myObject2.
-        data2.mReplyProxy.postMessage(HELLO);
+        data2.mReplyProxy.postMessage(new MessagePayload(HELLO));
 
         TestWebMessageListener.Data replyData1 = mListener.waitForOnPostMessage();
         TestWebMessageListener.Data replyData2 = webMessageListener2.waitForOnPostMessage();
@@ -773,7 +773,7 @@ public class JsJavaInteractionTest {
         TestWebMessageListener.Data data2 = mListener.waitForOnPostMessage();
 
         // Use the previous JsReplyProxy to send message. It should drop the message.
-        proxy.postMessage(NEW_TITLE);
+        proxy.postMessage(new MessagePayload(NEW_TITLE));
 
         // Call evaluateJavascript to make sure the previous postMessage() call is reached to
         // renderer if it should, since these messages are in sequence.
@@ -819,7 +819,7 @@ public class JsJavaInteractionTest {
                 mContentsClient);
 
         // Post message to test both listeners receive message.
-        proxy.postMessage(HELLO);
+        proxy.postMessage(new MessagePayload(HELLO));
 
         TestWebMessageListener.Data replyData1 = mListener.waitForOnPostMessage();
         TestWebMessageListener.Data replyData2 = mListener.waitForOnPostMessage();
@@ -831,7 +831,7 @@ public class JsJavaInteractionTest {
                 "listener2", JS_OBJECT_NAME, mActivityTestRule, mAwContents, mContentsClient);
 
         // Post message again to test if remove works.
-        proxy.postMessage(HELLO);
+        proxy.postMessage(new MessagePayload(HELLO));
 
         // listener 1 should add message again.
         TestWebMessageListener.Data replyData3 = mListener.waitForOnPostMessage();
@@ -856,7 +856,7 @@ public class JsJavaInteractionTest {
         final OnReceivedTitleHelper onReceivedTitleHelper =
                 mContentsClient.getOnReceivedTitleHelper();
         final int titleCallCount = onReceivedTitleHelper.getCallCount();
-        data.mReplyProxy.postMessage(NEW_TITLE);
+        data.mReplyProxy.postMessage(new MessagePayload(NEW_TITLE));
         onReceivedTitleHelper.waitForCallback(titleCallCount);
 
         Assert.assertEquals(NEW_TITLE, onReceivedTitleHelper.getTitle());
