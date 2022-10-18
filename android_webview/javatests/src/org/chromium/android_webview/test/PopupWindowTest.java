@@ -28,6 +28,7 @@ import org.chromium.android_webview.test.TestAwContentsClient.ShouldInterceptReq
 import org.chromium.android_webview.test.util.CommonResources;
 import org.chromium.android_webview.test.util.JSUtils;
 import org.chromium.base.ThreadUtils;
+import org.chromium.base.test.util.Batch;
 import org.chromium.base.test.util.CommandLineFlags;
 import org.chromium.base.test.util.Criteria;
 import org.chromium.base.test.util.CriteriaHelper;
@@ -50,6 +51,7 @@ import java.util.concurrent.TimeUnit;
  * Tests for pop up window flow.
  */
 @RunWith(AwJUnit4ClassRunner.class)
+@Batch(Batch.PER_CLASS)
 public class PopupWindowTest {
     @Rule
     public AwActivityTestRule mActivityTestRule = new AwActivityTestRule();
