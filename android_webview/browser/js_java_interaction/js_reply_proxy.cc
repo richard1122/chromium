@@ -11,7 +11,7 @@
 #include "base/android/scoped_java_ref.h"
 #include "components/js_injection/browser/web_message_reply_proxy.h"
 #include "components/js_injection/common/web_message.h"
-#include "content/browser/android/message_payload.h"
+#include "content/public/browser/android/message_payload.h"
 
 namespace android_webview {
 
