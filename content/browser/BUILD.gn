@@ -3027,6 +3027,7 @@ source_set("browser") {
     deps += [
       ":reflection_jni_headers",
       "//build/config/freetype",
+      "//components/js_injection/common:common_mojom",
       "//components/tracing:graphics_provider",
       "//content/public/android:jni",
       "//device/gamepad/public/mojom",

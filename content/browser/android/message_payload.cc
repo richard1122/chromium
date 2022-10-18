@@ -13,6 +13,8 @@
 #include "base/containers/span.h"
 #include "base/functional/overloaded.h"
 #include "base/notreached.h"
+#include "components/js_injection/common/interfaces.mojom-forward.h"
+#include "components/js_injection/common/interfaces.mojom.h"
 #include "content/public/android/content_jni_headers/MessagePayloadJni_jni.h"
 #include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/abseil-cpp/absl/types/variant.h"
@@ -106,6 +108,20 @@ blink::WebMessagePayload ConvertToWebMessagePayloadFromJava(
   }
   NOTREACHED() << "Unsupported or invalid Java MessagePayload type.";
   return std::u16string();
+}
+
+js_injection::mojom::JsWebMessagePtr ConvertJsWebMessageFromJava(
+    const base::android::ScopedJavaLocalRef<jobject>& java_message) {
+  CHECK(java_message);
+  JNIEnv* env = base::android::AttachCurrentThread();
+  const MessagePayloadType type = static_cast<MessagePayloadType>(
+      Java_MessagePayloadJni_getType(env, java_message));
+  // TODO(crbug.com/1374142): Add ArrayBuffer support.
+  DCHECK(type == MessagePayloadType::kString);
+
+  return js_injection::mojom::JsWebMessage::NewStringValue(
+      base::android::ConvertJavaStringToUTF16(
+          Java_MessagePayloadJni_getAsString(env, java_message)));
 }
 
 }  // namespace content::android
