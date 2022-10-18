@@ -151,7 +151,7 @@ public class JsJavaInteractionTest {
     public void testPostMessageSimpleArrayBuffer() throws Throwable {
         addWebMessageListenerOnUiThread(mAwContents, JS_OBJECT_NAME, new String[] {"*"}, mListener);
 
-        final String url = loadUrlFromPath(POST_MESSAGE_SIMPLE_HTML);
+        final String url = loadUrlFromPath(POST_MESSAGE_SIMPLE_ARRAY_BUFFER_HTML);
 
         TestWebMessageListener.Data data = mListener.waitForOnPostMessage();
 
