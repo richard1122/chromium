@@ -16,6 +16,7 @@
 #include "gin/data_object_builder.h"
 #include "gin/handle.h"
 #include "gin/object_template_builder.h"
+#include "third_party/abseil-cpp/absl/types/variant.h"
 #include "third_party/blink/public/common/associated_interfaces/associated_interface_provider.h"
 #include "third_party/blink/public/common/messaging/message_port_channel.h"
 #include "third_party/blink/public/platform/web_security_origin.h"
@@ -110,12 +111,24 @@ void JsBinding::OnPostMessage(JsWebMessage message) {
   v8::TryCatch try_catch(isolate);
   try_catch.SetVerbose(true);
 
+  v8::Local<v8::Value> message_payload;
+  if (absl::holds_alternative<std::u16string>(message.payload)) {
+    message_payload = gin::Converter<std::u16string>::ToV8(
+        isolate, absl::get<std::u16string>(message.payload));
+  } else if (absl::holds_alternative<std::vector<uint8_t>>(message.payload)) {
+    auto arrayBuffer = absl::get<std::vector<uint8_t>>(message.payload);
+    auto backing_store =
+        v8::ArrayBuffer::NewBackingStore(isolate, arrayBuffer.size());
+    memcpy(backing_store->Data(), arrayBuffer.data(), arrayBuffer.size());
+    message_payload = v8::ArrayBuffer::New(isolate, std::move(backing_store));
+  } else {
+    NOTREACHED() << "Unknown message payload type.";
+  }
+
   // Simulate MessageEvent's data property. See
   // https://html.spec.whatwg.org/multipage/comms.html#messageevent
   v8::Local<v8::Object> event =
-      gin::DataObjectBuilder(isolate)
-          .Set("data", absl::get<std::u16string>(message.payload))
-          .Build();
+      gin::DataObjectBuilder(isolate).Set("data", message_payload).Build();
   v8::Local<v8::Value> argv[] = {event};
 
   v8::Local<v8::Object> self = GetWrapper(isolate).ToLocalChecked();
