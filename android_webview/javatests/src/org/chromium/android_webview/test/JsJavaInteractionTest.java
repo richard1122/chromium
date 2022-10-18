@@ -52,6 +52,8 @@ public class JsJavaInteractionTest {
             RESOURCE_PATH + "/post_message_simple.html";
     private static final String POST_MESSAGE_SIMPLE_ARRAY_BUFFER_HTML =
             RESOURCE_PATH + "/post_message_simple_array_buffer.html";
+    private static final String POST_MESSAGE_REPLY_ECHO_HTML =
+            RESOURCE_PATH + "/post_message_reply_echo.html";
     private static final String POST_MESSAGE_WITH_PORTS_HTML =
             RESOURCE_PATH + "/post_message_with_ports.html";
     private static final String POST_MESSAGE_REPEAT_HTML =
@@ -161,6 +163,46 @@ public class JsJavaInteractionTest {
         Assert.assertEquals(0, data.mPorts.length);
 
         Assert.assertTrue(mListener.hasNoMoreOnPostMessage());
+    }
+
+    @Test
+    @SmallTest
+    @Feature({"AndroidWebView", "JsJavaInteraction"})
+    public void testPostMessageEchoString() throws Throwable {
+        addWebMessageListenerOnUiThread(mAwContents, JS_OBJECT_NAME, new String[] {"*"}, mListener);
+
+        final String url = loadUrlFromPath(POST_MESSAGE_REPLY_ECHO_HTML);
+
+        TestWebMessageListener.Data data = mListener.waitForOnPostMessage();
+
+        assertUrlHasOrigin(url, data.mSourceOrigin);
+        Assert.assertEquals(HELLO, data.getAsString());
+        Assert.assertTrue(mListener.hasNoMoreOnPostMessage());
+
+        // Send Message and wait echo.
+        data.mReplyProxy.postMessage(new MessagePayload(HELLO + HELLO));
+        data = mListener.waitForOnPostMessage();
+        Assert.assertEquals(HELLO + HELLO, data.getAsString());
+    }
+
+    @Test
+    @SmallTest
+    @Feature({"AndroidWebView", "JsJavaInteraction"})
+    public void testPostMessageEchoArrayBuffer() throws Throwable {
+        addWebMessageListenerOnUiThread(mAwContents, JS_OBJECT_NAME, new String[] {"*"}, mListener);
+
+        final String url = loadUrlFromPath(POST_MESSAGE_REPLY_ECHO_HTML);
+
+        TestWebMessageListener.Data data = mListener.waitForOnPostMessage();
+
+        assertUrlHasOrigin(url, data.mSourceOrigin);
+        Assert.assertEquals(HELLO, data.getAsString());
+        Assert.assertTrue(mListener.hasNoMoreOnPostMessage());
+
+        // Send Message and wait echo.
+        data.mReplyProxy.postMessage(new MessagePayload(HELLO.getBytes(StandardCharsets.UTF_8)));
+        data = mListener.waitForOnPostMessage();
+        Assert.assertArrayEquals(HELLO.getBytes(StandardCharsets.UTF_8), data.getAsArrayBuffer());
     }
 
     @Test
