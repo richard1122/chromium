@@ -1,0 +1,17 @@
+<html>
+
+<head>
+  <script>
+    const view = new TextEncoder().encode("Hello");
+    myObject.postMessage(view.buffer, [view.buffer]);
+    // view.buffer is transfered, so it should be an empty ArrayBuffer.
+    myObject.postMessage(view.buffer);
+  </script>
+</head>
+
+<body>
+  <div>postMessage</div>
+  <a href="#fragment">fragment</a>
+</body>
+
+</html>
