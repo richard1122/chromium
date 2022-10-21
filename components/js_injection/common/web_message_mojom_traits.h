@@ -25,7 +25,13 @@ struct UnionTraits<js_injection::mojom::JsWebMessageDataView,
 
   static mojo_base::BigBuffer array_buffer_value(
       const js_injection::JsWebMessage& message) {
-    return absl::get<std::vector<uint8_t>>(message.payload);
+    LOG(ERROR) << __PRETTY_FUNCTION__;
+    auto& buffer = absl::get<std::vector<uint8_t>>(message.payload);
+    LOG(ERROR) << __FUNCTION__ << " absl::get done";
+    auto big_buffer = mojo_base::BigBuffer(buffer);
+    LOG(ERROR) << __FUNCTION__ << " bigbuffer constructed, type: "
+               << static_cast<int>(big_buffer.storage_type());
+    return big_buffer;
   }
 
   static js_injection::mojom::JsWebMessageDataView::Tag GetTag(

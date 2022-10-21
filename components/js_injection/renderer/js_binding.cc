@@ -91,6 +91,7 @@ JsBinding::JsBinding(content::RenderFrame* render_frame,
 JsBinding::~JsBinding() = default;
 
 void JsBinding::OnPostMessage(JsWebMessage message) {
+  LOG(ERROR) << __PRETTY_FUNCTION__;
   // If `js_communication_` is null, this object will soon be destroyed.
   if (!js_communication_)
     return;
@@ -169,6 +170,7 @@ gin::ObjectTemplateBuilder JsBinding::GetObjectTemplateBuilder(
 }
 
 void JsBinding::PostMessage(gin::Arguments* args) {
+  LOG(ERROR) << __PRETTY_FUNCTION__;
   v8::Local<v8::Value> payload;
   if (!args->GetNext(&payload)) {
     args->ThrowError();
