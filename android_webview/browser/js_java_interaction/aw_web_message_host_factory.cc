@@ -44,8 +44,8 @@ class AwWebMessageHost : public js_injection::WebMessageHost {
         content::android::CreateJavaMessagePort(std::move(message->ports));
     Java_WebMessageListenerHolder_onPostMessage(
         env, listener_,
-        content::android::ConvertWebMessagePayloadToJava(
-            message->message.payload),
+        content::android::ConvertJsWebMessagePtrToJava(
+            std::move(message->message)),
         base::android::ConvertUTF8ToJavaString(env, origin_string_),
         is_main_frame_, jports, reply_proxy_.GetJavaPeer());
   }
