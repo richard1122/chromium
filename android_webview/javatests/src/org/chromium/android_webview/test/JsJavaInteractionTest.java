@@ -33,6 +33,7 @@ import org.chromium.net.test.EmbeddedTestServer;
 import org.chromium.net.test.EmbeddedTestServerRule;
 import org.chromium.net.test.util.TestWebServer;
 
+import java.nio.charset.StandardCharsets;
 import java.util.concurrent.LinkedBlockingQueue;
 
 /**
@@ -55,6 +56,8 @@ public class JsJavaInteractionTest {
             RESOURCE_PATH + "/post_message_repeat.html";
     private static final String POST_MESSAGE_REPLY_HTML =
             RESOURCE_PATH + "/post_message_receives_reply.html";
+    private static final String POST_MESSAGE_ARRAYBUFFER_REPLY_HTML =
+            RESOURCE_PATH + "/post_message_array_buffer_reply.html";
     private static final String FILE_URI = "file:///android_asset/asset_file.html";
     private static final String HELLO_WORLD_HTML = RESOURCE_PATH + "/hello_world.html";
 
@@ -673,6 +676,27 @@ public class JsJavaInteractionTest {
 
         Assert.assertEquals(NEW_TITLE, onReceivedTitleHelper.getTitle());
 
+        Assert.assertTrue(mListener.hasNoMoreOnPostMessage());
+    }
+
+    @Test
+    @MediumTest
+    @Feature({"AndroidWebView", "JsJavaInteraction"})
+    public void testPostArrayBufferWorks() throws Throwable {
+        addWebMessageListenerOnUiThread(mAwContents, JS_OBJECT_NAME, new String[] {"*"}, mListener);
+
+        final String url = loadUrlFromPath(POST_MESSAGE_ARRAYBUFFER_REPLY_HTML);
+
+        TestWebMessageListener.Data data = mListener.waitForOnPostMessage();
+        final String messageStr = HELLO + "FromJava";
+
+        data.mReplyProxy.postMessage(
+                new MessagePayload(messageStr.getBytes(StandardCharsets.UTF_8)));
+
+        data = mListener.waitForOnPostMessage();
+        // TODO(crrev.com/1374142): Add support for ArrayBuffer message from
+        // JS to Java. Right now we encode the ArrayBuffer as a string.
+        Assert.assertEquals(messageStr, data.mMessage);
         Assert.assertTrue(mListener.hasNoMoreOnPostMessage());
     }
 
