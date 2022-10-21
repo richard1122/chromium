@@ -51,6 +51,7 @@ class JsToBrowserMessaging::ReplyProxyImpl : public WebMessageReplyProxy {
 
   // WebMessageReplyProxy:
   void PostWebMessage(JsWebMessage message) override {
+    LOG(ERROR) << __PRETTY_FUNCTION__;
     java_to_js_messaging_->OnPostMessage(std::move(message));
   }
   bool IsInBackForwardCache() override {
@@ -85,6 +86,7 @@ void JsToBrowserMessaging::OnBackForwardCacheStateChanged() {
 void JsToBrowserMessaging::PostMessage(
     JsWebMessage message,
     std::vector<blink::MessagePortDescriptor> ports) {
+  LOG(ERROR) << __PRETTY_FUNCTION__;
   DCHECK(render_frame_host_);
 
   if (render_frame_host_->IsInactiveAndDisallowActivation(

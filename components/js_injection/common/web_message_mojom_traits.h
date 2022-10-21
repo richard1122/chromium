@@ -25,7 +25,10 @@ struct UnionTraits<js_injection::mojom::JsWebMessageDataView,
 
   static mojo_base::BigBuffer array_buffer_value(
       js_injection::JsWebMessage& message) {
-    return std::move(absl::get<mojo_base::BigBuffer>(message.payload));
+    LOG(ERROR) << __PRETTY_FUNCTION__;
+    auto& big_buffer = absl::get<mojo_base::BigBuffer>(message.payload);
+    LOG(ERROR) << __FUNCTION__ << " absl::get done";
+    return std::move(big_buffer);
   }
 
   static js_injection::mojom::JsWebMessageDataView::Tag GetTag(

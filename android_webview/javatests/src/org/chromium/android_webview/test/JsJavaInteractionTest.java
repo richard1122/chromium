@@ -5,11 +5,15 @@
 package org.chromium.android_webview.test;
 
 import android.net.Uri;
+import android.os.Handler;
+import android.os.Looper;
+import android.support.test.InstrumentationRegistry;
 import android.webkit.JavascriptInterface;
 
 import androidx.test.filters.MediumTest;
 import androidx.test.filters.SmallTest;
 
+import org.chromium.base.Log;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.ClassRule;
@@ -34,13 +38,13 @@ import org.chromium.net.test.EmbeddedTestServerRule;
 import org.chromium.net.test.util.TestWebServer;
 
 import java.nio.charset.StandardCharsets;
+import java.util.Random;
 import java.util.concurrent.LinkedBlockingQueue;
 
 /**
  * Test suite for JavaScript Java interaction.
  */
 @RunWith(AwJUnit4ClassRunner.class)
-@Batch(Batch.PER_CLASS)
 public class JsJavaInteractionTest {
     @Rule
     public AwActivityTestRule mActivityTestRule = new AwActivityTestRule();
@@ -56,6 +60,8 @@ public class JsJavaInteractionTest {
             RESOURCE_PATH + "/post_message_transfer_array_buffer.html";
     private static final String POST_MESSAGE_REPLY_ECHO_HTML =
             RESOURCE_PATH + "/post_message_reply_echo.html";
+    private static final String POST_MESSAGE_REPLY_ECHO_PORT_HTML =
+            RESOURCE_PATH + "/post_message_reply_echo_port.html";
     private static final String POST_MESSAGE_WITH_PORTS_HTML =
             RESOURCE_PATH + "/post_message_with_ports.html";
     private static final String POST_MESSAGE_REPEAT_HTML =
@@ -226,6 +232,69 @@ public class JsJavaInteractionTest {
         data.mReplyProxy.postMessage(new MessagePayload(HELLO.getBytes(StandardCharsets.UTF_8)));
         data = mListener.waitForOnPostMessage();
         Assert.assertArrayEquals(HELLO.getBytes(StandardCharsets.UTF_8), data.getAsArrayBuffer());
+    }
+
+    @Test
+    @SmallTest
+    @Feature({"AndroidWebView", "JsJavaInteraction"})
+    public void largeTestPostMessageEchoArrayBufferOnly() throws Throwable {
+        addWebMessageListenerOnUiThread(mAwContents, JS_OBJECT_NAME, new String[] {"*"}, mListener);
+
+        final String url = loadUrlFromPath(POST_MESSAGE_REPLY_ECHO_HTML);
+
+        TestWebMessageListener.Data data = mListener.waitForOnPostMessage();
+
+        assertUrlHasOrigin(url, data.mSourceOrigin);
+        Assert.assertEquals(HELLO, data.getAsString());
+        Assert.assertTrue(mListener.hasNoMoreOnPostMessage());
+        Random random = new Random();
+
+        long startTs = System.currentTimeMillis();
+
+        for (int i = 0; i != 200; ++i) {
+            Log.e("tag", "Index: %d", i);
+            byte[] bytes = new byte[1400000];
+            random.nextBytes(bytes);
+            Log.e("tag", "Index: %d, will post message", i);
+            data.mReplyProxy.postMessage(new MessagePayload(bytes));
+            Log.e("tag", "Index: %d, post message done", i);
+            data = mListener.waitForOnPostMessage();
+        }
+        Log.e("tag", "MessageListener total: %d", System.currentTimeMillis() - startTs);
+    }
+
+    @Test
+    @SmallTest
+    @Feature({"AndroidWebView", "JsJavaInteraction"})
+    public void largeTestPostMessageEchoArrayBufferPort() throws Throwable {
+        addWebMessageListenerOnUiThread(mAwContents, JS_OBJECT_NAME, new String[] {"*"}, mListener);
+
+        final String url = loadUrlFromPath(POST_MESSAGE_REPLY_ECHO_PORT_HTML);
+
+        TestWebMessageListener.Data data = mListener.waitForOnPostMessage();
+
+        assertUrlHasOrigin(url, data.mSourceOrigin);
+        Assert.assertEquals(HELLO, data.getAsString());
+        Assert.assertTrue(mListener.hasNoMoreOnPostMessage());
+        MessagePort port = data.mPorts[0];
+        Random random = new Random();
+        port.setMessageCallback((messagePayload, sentPorts) -> {
+            Log.e("TAG", "MessagePort, onMessage");
+            mListener.onPostMessage(messagePayload, Uri.EMPTY, true, null, null);
+        }, new Handler(Looper.getMainLooper()));
+
+        long startTs = System.currentTimeMillis();
+
+        for (int i = 0; i != 200; ++i) {
+            Log.e("tag", "Index: %d", i);
+            byte[] bytes = new byte[1400000];
+            random.nextBytes(bytes);
+            Log.e("tag", "Index: %d, will post message", i);
+            port.postMessage(new MessagePayload(bytes), null);
+            Log.e("tag", "Index: %d, post message done", i);
+            mListener.waitForOnPostMessage();
+        }
+        Log.e("tag", "MessagePort total: %d", System.currentTimeMillis() - startTs);
     }
 
     @Test

@@ -37,10 +37,13 @@ base::android::ScopedJavaLocalRef<jobject> JsReplyProxy::GetJavaPeer() {
 void JsReplyProxy::PostMessage(
     JNIEnv* env,
     const base::android::JavaParamRef<jobject>& payload) {
+  LOG(ERROR) << __PRETTY_FUNCTION__;
   js_injection::JsWebMessage js_message =
       content::android::ConvertToJsWebMessageFromJava(
           base::android::ScopedJavaLocalRef<jobject>(payload));
+  LOG(ERROR) << __FUNCTION__ << " convert to C++ payload done.";
   reply_proxy_->PostWebMessage(std::move(js_message));
+  LOG(ERROR) << __FUNCTION__ << " exit...";
 }
 
 }  // namespace android_webview
