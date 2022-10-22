@@ -8,6 +8,7 @@
 #include <string>
 #include <vector>
 
+#include "mojo/public/cpp/base/big_buffer.h"
 #include "third_party/abseil-cpp/absl/types/variant.h"
 
 namespace js_injection {
@@ -21,7 +22,8 @@ struct JsWebMessage {
   JsWebMessage& operator=(JsWebMessage&) = delete;
   JsWebMessage& operator=(JsWebMessage&&);
 
-  absl::variant<std::u16string, std::vector<uint8_t>> payload;
+  // Variant type: String, ArrayBuffer
+  absl::variant<std::u16string, mojo_base::BigBuffer> payload;
 };
 }  // namespace js_injection
 

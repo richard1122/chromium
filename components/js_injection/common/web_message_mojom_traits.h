@@ -24,15 +24,15 @@ struct UnionTraits<js_injection::mojom::JsWebMessageDataView,
   }
 
   static mojo_base::BigBuffer array_buffer_value(
-      const js_injection::JsWebMessage& message) {
-    return absl::get<std::vector<uint8_t>>(message.payload);
+      js_injection::JsWebMessage& message) {
+    return std::move(absl::get<mojo_base::BigBuffer>(message.payload));
   }
 
   static js_injection::mojom::JsWebMessageDataView::Tag GetTag(
       const js_injection::JsWebMessage& input) {
     if (absl::holds_alternative<std::u16string>(input.payload)) {
       return js_injection::mojom::JsWebMessageDataView::Tag::kStringValue;
-    } else if (absl::holds_alternative<std::vector<uint8_t>>(input.payload)) {
+    } else if (absl::holds_alternative<mojo_base::BigBuffer>(input.payload)) {
       return js_injection::mojom::JsWebMessageDataView::Tag::kArrayBufferValue;
     }
     NOTREACHED() << "Unknown type for JsWebMessage.";

@@ -17,6 +17,7 @@
 #include "gin/data_object_builder.h"
 #include "gin/handle.h"
 #include "gin/object_template_builder.h"
+#include "mojo/public/cpp/base/big_buffer.h"
 #include "third_party/abseil-cpp/absl/types/variant.h"
 #include "third_party/blink/public/common/associated_interfaces/associated_interface_provider.h"
 #include "third_party/blink/public/common/messaging/message_port_channel.h"
@@ -116,11 +117,11 @@ void JsBinding::OnPostMessage(JsWebMessage message) {
   if (absl::holds_alternative<std::u16string>(message.payload)) {
     message_payload = gin::Converter<std::u16string>::ToV8(
         isolate, absl::get<std::u16string>(message.payload));
-  } else if (absl::holds_alternative<std::vector<uint8_t>>(message.payload)) {
-    auto arrayBuffer = absl::get<std::vector<uint8_t>>(message.payload);
+  } else if (absl::holds_alternative<mojo_base::BigBuffer>(message.payload)) {
+    auto& big_buffer = absl::get<mojo_base::BigBuffer>(message.payload);
     auto backing_store =
-        v8::ArrayBuffer::NewBackingStore(isolate, arrayBuffer.size());
-    memcpy(backing_store->Data(), arrayBuffer.data(), arrayBuffer.size());
+        v8::ArrayBuffer::NewBackingStore(isolate, big_buffer.size());
+    memcpy(backing_store->Data(), big_buffer.data(), big_buffer.size());
     message_payload = v8::ArrayBuffer::New(isolate, std::move(backing_store));
   } else {
     NOTREACHED() << "Unknown message payload type.";
