@@ -13,7 +13,6 @@ import android.webkit.JavascriptInterface;
 import androidx.test.filters.MediumTest;
 import androidx.test.filters.SmallTest;
 
-import org.chromium.base.Log;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.ClassRule;
@@ -27,6 +26,7 @@ import org.chromium.android_webview.ScriptHandler;
 import org.chromium.android_webview.WebMessageListener;
 import org.chromium.android_webview.test.TestAwContentsClient.OnReceivedTitleHelper;
 import org.chromium.android_webview.test.util.CommonResources;
+import org.chromium.base.Log;
 import org.chromium.base.test.util.Batch;
 import org.chromium.base.test.util.Feature;
 import org.chromium.content_public.browser.MessagePayload;
@@ -251,11 +251,10 @@ public class JsJavaInteractionTest {
 
         long startTs = System.currentTimeMillis();
 
-        for (int i = 0; i != 200; ++i) {
+        byte[] bytes = new byte[1400000];
+        random.nextBytes(bytes);
+        for (int i = 0; i != 2000; ++i) {
             Log.e("tag", "Index: %d", i);
-            byte[] bytes = new byte[1400000];
-            random.nextBytes(bytes);
-            Log.e("tag", "Index: %d, will post message", i);
             data.mReplyProxy.postMessage(new MessagePayload(bytes));
             Log.e("tag", "Index: %d, post message done", i);
             data = mListener.waitForOnPostMessage();
@@ -284,12 +283,11 @@ public class JsJavaInteractionTest {
         }, new Handler(Looper.getMainLooper()));
 
         long startTs = System.currentTimeMillis();
+        byte[] bytes = new byte[1400000];
+        random.nextBytes(bytes);
 
-        for (int i = 0; i != 200; ++i) {
+        for (int i = 0; i != 2000; ++i) {
             Log.e("tag", "Index: %d", i);
-            byte[] bytes = new byte[1400000];
-            random.nextBytes(bytes);
-            Log.e("tag", "Index: %d, will post message", i);
             port.postMessage(new MessagePayload(bytes), null);
             Log.e("tag", "Index: %d, post message done", i);
             mListener.waitForOnPostMessage();

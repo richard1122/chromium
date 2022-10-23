@@ -7,6 +7,7 @@
 #include <string>
 #include "base/notreached.h"
 #include "components/js_injection/common/interfaces.mojom.h"
+#include "mojo/public/cpp/base/big_buffer.h"
 
 namespace mojo {
 
@@ -24,12 +25,11 @@ bool UnionTraits<js_injection::mojom::JsWebMessageDataView,
     return true;
   } else if (r.is_array_buffer_value()) {
     LOG(ERROR) << __FUNCTION__ << " is_array_buffer_value";
-    mojo_base::BigBufferView array_buffer_view;
-    if (!r.ReadArrayBufferValue(&array_buffer_view))
+    mojo_base::BigBuffer big_buffer;
+    if (!r.ReadArrayBufferValue(&big_buffer))
       return false;
     LOG(ERROR) << __FUNCTION__ << " ReadArrayBufferValue done.";
-    out->payload = std::vector<uint8_t>(array_buffer_view.data().begin(),
-                                        array_buffer_view.data().end());
+    out->payload = std::move(big_buffer);
     LOG(ERROR) << __FUNCTION__ << " assign bigbuffer to absl::variant done.";
     return true;
   } else {

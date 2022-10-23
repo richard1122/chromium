@@ -5,6 +5,8 @@
 #ifndef COMPONENTS_JS_INJECTION_COMMON_WEB_MESSAGE_MOJOM_TRAITS_H_
 #define COMPONENTS_JS_INJECTION_COMMON_WEB_MESSAGE_MOJOM_TRAITS_H_
 
+#include <__chrono/duration.h>
+#include <chrono>
 #include <string>
 
 #include "components/js_injection/common/interfaces.mojom.h"
@@ -25,7 +27,11 @@ struct UnionTraits<js_injection::mojom::JsWebMessageDataView,
 
   static mojo_base::BigBuffer array_buffer_value(
       js_injection::JsWebMessage& message) {
-    LOG(ERROR) << __PRETTY_FUNCTION__;
+    auto now = std::chrono::steady_clock::now();
+    auto nano = std::chrono::duration_cast<std::chrono::nanoseconds>(
+                    now.time_since_epoch())
+                    .count();
+    LOG(ERROR) << __PRETTY_FUNCTION__ << " now: " << nano;
     auto& big_buffer = absl::get<mojo_base::BigBuffer>(message.payload);
     LOG(ERROR) << __FUNCTION__ << " absl::get done";
     return std::move(big_buffer);

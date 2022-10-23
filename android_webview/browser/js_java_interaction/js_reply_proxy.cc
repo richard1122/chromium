@@ -37,7 +37,11 @@ base::android::ScopedJavaLocalRef<jobject> JsReplyProxy::GetJavaPeer() {
 void JsReplyProxy::PostMessage(
     JNIEnv* env,
     const base::android::JavaParamRef<jobject>& payload) {
-  LOG(ERROR) << __PRETTY_FUNCTION__;
+  auto now = std::chrono::steady_clock::now();
+  auto nano = std::chrono::duration_cast<std::chrono::nanoseconds>(
+                  now.time_since_epoch())
+                  .count();
+  LOG(ERROR) << __PRETTY_FUNCTION__ << " now: " << nano;
   js_injection::JsWebMessage js_message =
       content::android::ConvertToJsWebMessageFromJava(
           base::android::ScopedJavaLocalRef<jobject>(payload));

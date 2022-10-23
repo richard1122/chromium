@@ -185,10 +185,9 @@ void JsBinding::PostMessage(gin::Arguments* args) {
   } else if (payload->IsArrayBuffer()) {
     v8::Local<v8::ArrayBuffer> array_buffer =
         v8::Local<v8::ArrayBuffer>::Cast(payload);
-    js_message.payload =
-        std::vector<uint8_t>(static_cast<uint8_t*>(array_buffer->Data()),
-                             static_cast<uint8_t*>(array_buffer->Data()) +
-                                 array_buffer->ByteLength());
+    mojo_base::BigBuffer big_buffer(array_buffer->ByteLength());
+    memcpy(big_buffer.data(), array_buffer->Data(), big_buffer.size());
+    js_message.payload = std::move(big_buffer);
   } else {
     args->ThrowError();
     return;
