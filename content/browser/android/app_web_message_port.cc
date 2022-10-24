@@ -152,8 +152,9 @@ bool AppWebMessagePort::Accept(mojo::Message* message) {
     // Decode mojo message failed.
     return false;
   }
+  auto ports = std::move(transferable_message.ports);
   auto optional_payload =
-      blink::DecodeToWebMessagePayload(transferable_message);
+      blink::DecodeToWebMessagePayload(std::move(transferable_message));
   if (!optional_payload) {
     // Unsupported or invalid payload.
     return true;
@@ -161,7 +162,7 @@ bool AppWebMessagePort::Accept(mojo::Message* message) {
   const auto& payload = optional_payload.value();
 
   auto j_ports = CreateJavaMessagePort(
-      blink::MessagePortChannel::ReleaseHandles(transferable_message.ports));
+      blink::MessagePortChannel::ReleaseHandles(std::move(ports)));
   base::android::ScopedJavaLocalRef<jobject> j_message =
       ConvertWebMessagePayloadToJava(payload);
   DCHECK(j_message);
