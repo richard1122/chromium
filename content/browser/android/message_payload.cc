@@ -28,12 +28,11 @@ base::android::ScopedJavaLocalRef<jobject> ConvertWebMessagePayloadToJava(
             return Java_MessagePayloadJni_createFromString(
                 env, base::android::ConvertUTF16ToJavaString(env, str));
           },
-          [env](const std::vector<uint8_t>& array_buffer) {
+          [env](const mojo_base::BigBuffer& big_buffer) {
             return Java_MessagePayloadJni_createFromArrayBuffer(
-                env, base::android::ToJavaByteArray(env, array_buffer.data(),
-                                                    array_buffer.size()));
-          },
-      },
+                env, base::android::ToJavaByteArray(env, big_buffer.data(),
+                                                    big_buffer.size()));
+          }},
       payload);
 }
 
@@ -51,15 +50,15 @@ blink::WebMessagePayload ConvertToWebMessagePayloadFromJava(
     case MessagePayloadType::kArrayBuffer: {
       auto byte_array =
           Java_MessagePayloadJni_getAsArrayBuffer(env, java_message);
-      std::vector<uint8_t> vector;
-      base::android::JavaByteArrayToByteVector(env, byte_array, &vector);
-      return vector;
+      mojo_base::BigBuffer buffer(env->GetArrayLength(byte_array.obj()));
+      env->GetByteArrayRegion(byte_array.obj(), 0, buffer.size(),
+                              reinterpret_cast<jbyte*>(buffer.data()));
+      return buffer;
     }
-    case MessagePayloadType::kInvalid:
-      break;
+    default:
+      NOTREACHED() << "Unsupported or invalid Java MessagePayload type.";
   }
-  NOTREACHED() << "Unsupported or invalid Java MessagePayload type.";
-  return std::u16string();
+  return u"";
 }
 
 }  // namespace content::android
