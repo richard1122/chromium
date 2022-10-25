@@ -13,7 +13,6 @@
 #include "components/js_injection/common/interfaces.mojom-forward.h"
 #include "components/js_injection/renderer/js_communication.h"
 #include "content/public/renderer/render_frame.h"
-#include "gin/converter.h"
 #include "gin/data_object_builder.h"
 #include "gin/handle.h"
 #include "gin/object_template_builder.h"
@@ -110,9 +109,6 @@ void JsBinding::OnPostMessage(mojom::JsWebMessagePtr message) {
   // uncaught-exception handlers, rather than just being silently swallowed.
   v8::TryCatch try_catch(isolate);
   try_catch.SetVerbose(true);
-
-  v8::Local<v8::Value> message_payload = gin::Converter<std::u16string>::ToV8(
-      isolate, message->get_string_value());
 
   // Simulate MessageEvent's data property. See
   // https://html.spec.whatwg.org/multipage/comms.html#messageevent
