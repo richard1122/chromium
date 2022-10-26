@@ -6,7 +6,9 @@
 
 #include <vector>
 
+#include "absl/types/optional.h"
 #include "base/containers/buffer_iterator.h"
+#include "base/functional/overloaded.h"
 #include "base/logging.h"
 #include "base/notreached.h"
 #include "mojo/public/cpp/base/big_buffer.h"
@@ -14,14 +16,6 @@
 
 namespace blink {
 namespace {
-
-// Template helpers for visiting std::variant.
-template <class... Ts>
-struct overloaded : Ts... {
-  using Ts::operator()...;
-};
-template <class... Ts>
-overloaded(Ts...) -> overloaded<Ts...>;
 
 const uint32_t kVarIntShift = 7;
 const uint32_t kVarIntMask = (1 << kVarIntShift) - 1;
@@ -98,15 +92,15 @@ bool ContainsOnlyLatin1(const std::u16string& data) {
 
 }  // namespace
 
-TransferableMessage EncodeWebMessagePayload(const WebMessagePayload& payload) {
+TransferableMessage EncodeWebMessagePayload(WebMessagePayload payload) {
   TransferableMessage message;
   std::vector<uint8_t> buffer;
   WriteUint8(kVersionTag, &buffer);
   WriteUint32(kVersion, &buffer);
 
   absl::visit(
-      overloaded{
-          [&](const std::u16string& str) {
+      base::Overloaded{
+          [&](std::u16string& str) {
             if (ContainsOnlyLatin1(str)) {
               std::string data_latin1(str.cbegin(), str.cend());
               WriteUint8(kOneByteStringTag, &buffer);
@@ -122,12 +116,10 @@ TransferableMessage EncodeWebMessagePayload(const WebMessagePayload& payload) {
                          &buffer);
             }
           },
-          [&](const std::vector<uint8_t>& array_buffer) {
+          [&](mojo_base::BigBuffer& big_buffer) {
             WriteUint8(kArrayBufferTransferTag, &buffer);
             // Write at the first slot.
             WriteUint32(0, &buffer);
-
-            mojo_base::BigBuffer big_buffer(array_buffer);
             message.array_buffer_contents_array.push_back(
                 mojom::SerializedArrayBufferContents::New(
                     std::move(big_buffer)));
@@ -141,7 +133,7 @@ TransferableMessage EncodeWebMessagePayload(const WebMessagePayload& payload) {
 }
 
 absl::optional<WebMessagePayload> DecodeToWebMessagePayload(
-    const TransferableMessage& message) {
+    TransferableMessage message) {
   base::BufferIterator<const uint8_t> iter(message.encoded_message);
   uint8_t tag;
 
@@ -216,10 +208,8 @@ absl::optional<WebMessagePayload> DecodeToWebMessagePayload(
         return absl::nullopt;
       if (message.array_buffer_contents_array.size() != 1)
         return absl::nullopt;
-      const auto& big_buffer = message.array_buffer_contents_array[0]->contents;
-      // Data is from renderer process, copy it first before use.
-      return std::vector(big_buffer.data(),
-                         big_buffer.data() + big_buffer.size());
+      auto& big_buffer = message.array_buffer_contents_array[0]->contents;
+      return absl::make_optional(WebMessagePayload(std::move(big_buffer)));
     }
   }
 

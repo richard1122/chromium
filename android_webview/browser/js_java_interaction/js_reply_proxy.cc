@@ -8,8 +8,10 @@
 
 #include "android_webview/browser_jni_headers/JsReplyProxy_jni.h"
 #include "base/android/jni_string.h"
+#include "base/android/scoped_java_ref.h"
 #include "components/js_injection/browser/web_message_reply_proxy.h"
 #include "components/js_injection/common/web_message.h"
+#include "content/public/browser/android/message_payload.h"
 
 namespace android_webview {
 
@@ -34,10 +36,18 @@ base::android::ScopedJavaLocalRef<jobject> JsReplyProxy::GetJavaPeer() {
 
 void JsReplyProxy::PostMessage(
     JNIEnv* env,
-    const base::android::JavaParamRef<jstring>& message) {
-  js_injection::JsWebMessage js_message;
-  js_message.payload = base::android::ConvertJavaStringToUTF16(env, message);
+    const base::android::JavaParamRef<jobject>& payload) {
+  auto now = std::chrono::steady_clock::now();
+  auto nano = std::chrono::duration_cast<std::chrono::nanoseconds>(
+                  now.time_since_epoch())
+                  .count();
+  LOG(ERROR) << __PRETTY_FUNCTION__ << " now: " << nano;
+  js_injection::JsWebMessage js_message =
+      content::android::ConvertToJsWebMessageFromJava(
+          base::android::ScopedJavaLocalRef<jobject>(payload));
+  LOG(ERROR) << __FUNCTION__ << " convert to C++ payload done.";
   reply_proxy_->PostWebMessage(std::move(js_message));
+  LOG(ERROR) << __FUNCTION__ << " exit...";
 }
 
 }  // namespace android_webview

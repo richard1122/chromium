@@ -12,7 +12,9 @@
 #include "base/android/scoped_java_ref.h"
 #include "base/functional/overloaded.h"
 #include "base/notreached.h"
+#include "components/js_injection/common/web_message.h"
 #include "content/public/android/content_jni_headers/MessagePayloadJni_jni.h"
+#include "mojo/public/cpp/base/big_buffer.h"
 #include "third_party/abseil-cpp/absl/types/variant.h"
 #include "third_party/blink/public/common/messaging/string_message_codec.h"
 #include "third_party/blink/public/common/messaging/transferable_message.h"
@@ -28,13 +30,17 @@ base::android::ScopedJavaLocalRef<jobject> ConvertWebMessagePayloadToJava(
             return Java_MessagePayloadJni_createFromString(
                 env, base::android::ConvertUTF16ToJavaString(env, str));
           },
-          [env](const std::vector<uint8_t>& array_buffer) {
+          [env](const mojo_base::BigBuffer& big_buffer) {
             return Java_MessagePayloadJni_createFromArrayBuffer(
-                env, base::android::ToJavaByteArray(env, array_buffer.data(),
-                                                    array_buffer.size()));
-          },
-      },
+                env, base::android::ToJavaByteArray(env, big_buffer.data(),
+                                                    big_buffer.size()));
+          }},
       payload);
+}
+
+base::android::ScopedJavaLocalRef<jobject> ConvertJsWebMessageToJava(
+    const js_injection::JsWebMessage& message) {
+  return ConvertWebMessagePayloadToJava(std::move(message.payload));
 }
 
 blink::WebMessagePayload ConvertToWebMessagePayloadFromJava(
@@ -51,15 +57,22 @@ blink::WebMessagePayload ConvertToWebMessagePayloadFromJava(
     case MessagePayloadType::kArrayBuffer: {
       auto byte_array =
           Java_MessagePayloadJni_getAsArrayBuffer(env, java_message);
-      std::vector<uint8_t> vector;
-      base::android::JavaByteArrayToByteVector(env, byte_array, &vector);
-      return vector;
+      mojo_base::BigBuffer buffer(env->GetArrayLength(byte_array.obj()));
+      env->GetByteArrayRegion(byte_array.obj(), 0, buffer.size(),
+                              reinterpret_cast<jbyte*>(buffer.data()));
+      return buffer;
     }
-    case MessagePayloadType::kInvalid:
-      break;
+    default:
+      NOTREACHED() << "Unsupported or invalid Java MessagePayload type.";
   }
-  NOTREACHED() << "Unsupported or invalid Java MessagePayload type.";
-  return std::u16string();
+  return u"";
+}
+
+js_injection::JsWebMessage ConvertToJsWebMessageFromJava(
+    const base::android::ScopedJavaLocalRef<jobject>& java_message) {
+  js_injection::JsWebMessage js_web_message;
+  js_web_message.payload = ConvertToWebMessagePayloadFromJava(java_message);
+  return js_web_message;
 }
 
 }  // namespace content::android

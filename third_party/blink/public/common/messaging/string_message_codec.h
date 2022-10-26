@@ -8,6 +8,7 @@
 #include <string>
 #include <vector>
 #include "base/containers/span.h"
+#include "mojo/public/cpp/base/big_buffer.h"
 #include "third_party/abseil-cpp/absl/types/variant.h"
 #include "third_party/blink/public/common/common_export.h"
 #include "third_party/blink/public/common/messaging/transferable_message.h"
@@ -16,7 +17,7 @@ namespace blink {
 
 // Represent WebMessage payload type between browser and renderer process.
 // std::vector<uint8_t>: the ArrayBuffer.
-using WebMessagePayload = absl::variant<std::u16string, std::vector<uint8_t>>;
+using WebMessagePayload = absl::variant<std::u16string, mojo_base::BigBuffer>;
 
 // To support exposing HTML message ports to Java, it is necessary to be able
 // to encode and decode message data using the same serialization format as V8.
@@ -30,10 +31,10 @@ using WebMessagePayload = absl::variant<std::u16string, std::vector<uint8_t>>;
 // IndexedDB.
 
 BLINK_COMMON_EXPORT TransferableMessage
-EncodeWebMessagePayload(const WebMessagePayload& payload);
+EncodeWebMessagePayload(WebMessagePayload payload);
 
 BLINK_COMMON_EXPORT absl::optional<WebMessagePayload> DecodeToWebMessagePayload(
-    const TransferableMessage& message);
+    TransferableMessage message);
 
 }  // namespace blink
 

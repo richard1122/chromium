@@ -162,6 +162,30 @@ IN_PROC_BROWSER_TEST_F(WebMessageTest, RemoveFromReceive) {
   current_connection->proxy()->GetPage();
 }
 
+// Receives a array buffer and a string, array buffer should be ignored.
+IN_PROC_BROWSER_TEST_F(WebMessageTest, SendAndIgnoreArrayBuffer) {
+  EXPECT_TRUE(embedded_test_server()->Start());
+
+  base::RunLoop run_loop;
+  shell()->tab()->AddWebMessageHostFactory(
+      std::make_unique<WebMessageHostFactoryImpl>(run_loop.QuitClosure()), u"x",
+      {"*"});
+
+  // web_message_test.html posts a message immediately.
+  shell()->tab()->GetNavigationController()->Navigate(
+      embedded_test_server()->GetURL("/web_message_test3.html"));
+  run_loop.Run();
+
+  // There should be two messages. The one from the page, and the ack triggered
+  // when WebMessageHostImpl calls PostMessage().
+  ASSERT_TRUE(current_connection);
+  ASSERT_EQ(2u, current_connection->messages().size());
+  EXPECT_EQ(u"from page", current_connection->messages()[0]);
+  EXPECT_EQ(u"bouncing from c++", current_connection->messages()[1]);
+  // WebLayer's Page has no functions, verify it can be requested.
+  current_connection->proxy()->GetPage();
+}
+
 class WebMessageTestWithBfCache : public WebLayerBrowserTest {
  public:
   // WebLayerBrowserTest:

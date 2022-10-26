@@ -43,7 +43,7 @@ class CONTENT_EXPORT MessagePortProvider {
   static void PostMessageToFrame(Page& page,
                                  const std::u16string& source_origin,
                                  const std::u16string& target_origin,
-                                 const blink::WebMessagePayload& data);
+                                 blink::WebMessagePayload data);
 
 #if BUILDFLAG(IS_ANDROID)
   static void PostMessageToFrame(
