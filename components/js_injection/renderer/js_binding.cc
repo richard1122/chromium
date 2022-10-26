@@ -8,14 +8,17 @@
 #include <vector>
 
 #include "base/containers/contains.h"
+#include "base/containers/span.h"
 #include "base/ranges/algorithm.h"
 #include "base/strings/string_util.h"
-#include "components/js_injection/common/web_message.h"
+#include "components/js_injection/common/interfaces.mojom-forward.h"
 #include "components/js_injection/renderer/js_communication.h"
 #include "content/public/renderer/render_frame.h"
+#include "gin/converter.h"
 #include "gin/data_object_builder.h"
 #include "gin/handle.h"
 #include "gin/object_template_builder.h"
+#include "third_party/abseil-cpp/absl/types/variant.h"
 #include "third_party/blink/public/common/associated_interfaces/associated_interface_provider.h"
 #include "third_party/blink/public/common/messaging/message_port_channel.h"
 #include "third_party/blink/public/platform/web_security_origin.h"
@@ -88,7 +91,8 @@ JsBinding::JsBinding(content::RenderFrame* render_frame,
 
 JsBinding::~JsBinding() = default;
 
-void JsBinding::OnPostMessage(JsWebMessage message) {
+void JsBinding::OnPostMessage(mojom::JsWebMessagePtr message) {
+  LOG(ERROR) << __PRETTY_FUNCTION__;
   // If `js_communication_` is null, this object will soon be destroyed.
   if (!js_communication_)
     return;
@@ -110,12 +114,24 @@ void JsBinding::OnPostMessage(JsWebMessage message) {
   v8::TryCatch try_catch(isolate);
   try_catch.SetVerbose(true);
 
+  v8::Local<v8::Value> message_payload;
+  if (message->is_string_value()) {
+    message_payload = gin::Converter<std::u16string>::ToV8(
+        isolate, message->get_string_value());
+  } else if (message->is_array_buffer_value()) {
+    auto& big_buffer = message->get_array_buffer_value();
+    auto backing_store =
+        v8::ArrayBuffer::NewBackingStore(isolate, big_buffer.size());
+    memcpy(backing_store->Data(), big_buffer.data(), big_buffer.size());
+    message_payload = v8::ArrayBuffer::New(isolate, std::move(backing_store));
+  } else {
+    NOTREACHED() << "Unknown message payload type.";
+  }
+
   // Simulate MessageEvent's data property. See
   // https://html.spec.whatwg.org/multipage/comms.html#messageevent
   v8::Local<v8::Object> event =
-      gin::DataObjectBuilder(isolate)
-          .Set("data", absl::get<std::u16string>(message.payload))
-          .Build();
+      gin::DataObjectBuilder(isolate).Set("data", message_payload).Build();
   v8::Local<v8::Value> argv[] = {event};
 
   v8::Local<v8::Object> self = GetWrapper(isolate).ToLocalChecked();
@@ -155,8 +171,26 @@ gin::ObjectTemplateBuilder JsBinding::GetObjectTemplateBuilder(
 }
 
 void JsBinding::PostMessage(gin::Arguments* args) {
-  std::u16string message;
-  if (!args->GetNext(&message)) {
+  LOG(ERROR) << __PRETTY_FUNCTION__;
+  v8::Local<v8::Value> payload;
+  if (!args->GetNext(&payload)) {
+    args->ThrowError();
+    return;
+  }
+  mojom::JsWebMessagePtr web_message_ptr;
+  if (payload->IsString()) {
+    std::u16string string;
+    gin::Converter<std::u16string>::FromV8(args->isolate(), payload, &string);
+    web_message_ptr = mojom::JsWebMessage::NewStringValue(std::move(string));
+  } else if (payload->IsArrayBuffer()) {
+    v8::Local<v8::ArrayBuffer> array_buffer =
+        v8::Local<v8::ArrayBuffer>::Cast(payload);
+    mojo_base::BigBuffer big_buffer(
+        base::make_span(static_cast<const uint8_t*>(array_buffer->Data()),
+                        array_buffer->ByteLength()));
+    web_message_ptr =
+        mojom::JsWebMessage::NewArrayBufferValue(std::move(big_buffer));
+  } else {
     args->ThrowError();
     return;
   }
@@ -186,10 +220,8 @@ void JsBinding::PostMessage(gin::Arguments* args) {
       js_communication_ ? js_communication_->GetJsToJavaMessage(js_object_name_)
                         : nullptr;
   if (js_to_java_messaging) {
-    JsWebMessage js_message;
-    js_message.payload = std::move(message);
     js_to_java_messaging->PostMessage(
-        std::move(js_message),
+        std::move(web_message_ptr),
         blink::MessagePortChannel::ReleaseHandles(ports));
   }
 }
