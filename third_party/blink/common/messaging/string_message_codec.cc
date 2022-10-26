@@ -6,6 +6,7 @@
 
 #include <vector>
 
+#include "absl/types/optional.h"
 #include "base/containers/buffer_iterator.h"
 #include "base/logging.h"
 #include "base/notreached.h"
@@ -139,6 +140,10 @@ TransferableMessage EncodeWebMessagePayload(const WebMessagePayload& payload) {
 
   return message;
 }
+
+BrowserTransferableMessage::BrowserTransferableMessage(
+    TransferableMessage&& message)
+    : message_(std::move(message)), tag_(-1), iter_(message_.encoded_message) {}
 
 absl::optional<WebMessagePayload> DecodeToWebMessagePayload(
     const TransferableMessage& message) {
