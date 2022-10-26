@@ -11,6 +11,7 @@ import android.webkit.JavascriptInterface;
 
 import androidx.test.filters.SmallTest;
 
+import org.chromium.base.test.util.Batch;
 import org.hamcrest.Matchers;
 import org.junit.After;
 import org.junit.Assert;
@@ -48,6 +49,7 @@ import java.util.concurrent.TimeUnit;
  * Tests for pop up window flow.
  */
 @RunWith(AwJUnit4ClassRunner.class)
+@Batch(Batch.PER_CLASS)
 public class PopupWindowTest {
     @Rule
     public AwActivityTestRule mActivityTestRule = new AwActivityTestRule();
