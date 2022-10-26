@@ -34,6 +34,7 @@ import org.chromium.net.test.EmbeddedTestServerRule;
 import org.chromium.net.test.util.TestWebServer;
 
 import java.nio.charset.StandardCharsets;
+import java.util.Random;
 import java.util.concurrent.LinkedBlockingQueue;
 
 /**
@@ -58,6 +59,8 @@ public class JsJavaInteractionTest {
             RESOURCE_PATH + "/post_message_receives_reply.html";
     private static final String POST_MESSAGE_ARRAYBUFFER_REPLY_HTML =
             RESOURCE_PATH + "/post_message_array_buffer_reply.html";
+    private static final String POST_MESSAGE_ARRAYBUFFER_TITLE_HTML =
+            RESOURCE_PATH + "/post_message_array_buffer_title.html";
     private static final String FILE_URI = "file:///android_asset/asset_file.html";
     private static final String HELLO_WORLD_HTML = RESOURCE_PATH + "/hello_world.html";
 
@@ -682,22 +685,60 @@ public class JsJavaInteractionTest {
     @Test
     @MediumTest
     @Feature({"AndroidWebView", "JsJavaInteraction"})
-    public void testPostArrayBufferWorks() throws Throwable {
+    public void testPostArrayBufferEncodeToString() throws Throwable {
         addWebMessageListenerOnUiThread(mAwContents, JS_OBJECT_NAME, new String[] {"*"}, mListener);
 
-        final String url = loadUrlFromPath(POST_MESSAGE_ARRAYBUFFER_REPLY_HTML);
+        final String url = loadUrlFromPath(POST_MESSAGE_ARRAYBUFFER_TITLE_HTML);
 
         TestWebMessageListener.Data data = mListener.waitForOnPostMessage();
         final String messageStr = HELLO + "FromJava";
 
+        final OnReceivedTitleHelper onReceivedTitleHelper =
+                mContentsClient.getOnReceivedTitleHelper();
+        final int titleCallCount = onReceivedTitleHelper.getCallCount();
         data.mReplyProxy.postMessage(
                 new MessagePayload(messageStr.getBytes(StandardCharsets.UTF_8)));
+        onReceivedTitleHelper.waitForCallback(titleCallCount);
 
+        Assert.assertEquals(messageStr, onReceivedTitleHelper.getTitle());
+        Assert.assertTrue(mListener.hasNoMoreOnPostMessage());
+    }
+
+    private void verifyPostArrayBufferWorks(byte[] content) throws Exception {
+        addWebMessageListenerOnUiThread(mAwContents, JS_OBJECT_NAME, new String[] {"*"}, mListener);
+        final String url = loadUrlFromPath(POST_MESSAGE_ARRAYBUFFER_REPLY_HTML);
+        TestWebMessageListener.Data data = mListener.waitForOnPostMessage();
+        data.mReplyProxy.postMessage(new MessagePayload(content));
         data = mListener.waitForOnPostMessage();
         // TODO(crrev.com/1374142): Add support for ArrayBuffer message from
-        // JS to Java. Right now we encode the ArrayBuffer as a string.
-        Assert.assertEquals(messageStr, data.mMessage);
+        // JS to Java. Right now we only check length.
+        Assert.assertEquals(content.length, Integer.parseInt(data.mMessage));
         Assert.assertTrue(mListener.hasNoMoreOnPostMessage());
+    }
+
+    @Test
+    @MediumTest
+    @Feature({"AndroidWebView", "JsJavaInteraction"})
+    public void testPostArrayBufferWorks() throws Throwable {
+        final byte[] content = (HELLO + "FromJava").getBytes(StandardCharsets.UTF_8);
+        verifyPostArrayBufferWorks(content);
+    }
+
+    @Test
+    @MediumTest
+    @Feature({"AndroidWebView", "JsJavaInteraction"})
+    public void testPostEmptyArrayBuffer() throws Throwable {
+        final byte[] content = new byte[0];
+        verifyPostArrayBufferWorks(content);
+    }
+
+    @Test
+    @MediumTest
+    @Feature({"AndroidWebView", "JsJavaInteraction"})
+    public void testPostLargeArrayBuffer() throws Throwable {
+        final byte[] content = new byte[500 * 1000]; // 500 Kib
+        new Random(42).nextBytes(content);
+        verifyPostArrayBufferWorks(content);
     }
 
     @Test
