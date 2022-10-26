@@ -6,6 +6,7 @@
 #define COMPONENTS_JS_INJECTION_BROWSER_WEB_MESSAGE_REPLY_PROXY_H_
 
 #include "components/js_injection/common/interfaces.mojom-forward.h"
+
 namespace content {
 class Page;
 }
