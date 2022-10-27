@@ -12,6 +12,7 @@
 #include "content/public/browser/android/message_payload_type.h"
 #include "third_party/blink/public/common/messaging/string_message_codec.h"
 #include "third_party/blink/public/common/messaging/transferable_message.h"
+#include "url/origin.h"
 
 namespace content::android {
 
@@ -31,6 +32,9 @@ CONTENT_EXPORT blink::WebMessagePayload ConvertToWebMessagePayloadFromJava(
 // Helper methods to convert between java
 // `org.chromium.content_public.browser.MessagePayload` and
 // `js_injection::mojom::JsWebMessagePtr`.
+CONTENT_EXPORT base::android::ScopedJavaLocalRef<jobject>
+ConvertJsWebMessageToJava(js_injection::mojom::JsWebMessagePtr message);
+
 CONTENT_EXPORT js_injection::mojom::JsWebMessagePtr ConvertJsWebMessageFromJava(
     const base::android::ScopedJavaLocalRef<
         jobject>& /* org.chromium.content_public.browser.MessagePayload */);

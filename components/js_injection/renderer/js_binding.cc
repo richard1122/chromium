@@ -17,6 +17,7 @@
 #include "gin/data_object_builder.h"
 #include "gin/handle.h"
 #include "gin/object_template_builder.h"
+#include "mojo/public/mojom/base/big_buffer.mojom.h"
 #include "third_party/blink/public/common/associated_interfaces/associated_interface_provider.h"
 #include "third_party/blink/public/common/messaging/message_port_channel.h"
 #include "third_party/blink/public/platform/web_security_origin.h"
@@ -177,18 +178,18 @@ void JsBinding::PostMessage(gin::Arguments* args) {
     args->ThrowError();
     return;
   }
-  JsWebMessage js_message;
+  mojom::JsWebMessagePtr js_message;
   if (payload->IsString()) {
     std::u16string string;
     gin::Converter<std::u16string>::FromV8(args->isolate(), payload, &string);
-    js_message.payload = std::move(string);
+    js_message = mojom::JsWebMessage::NewStringValue(std::move(string));
   } else if (payload->IsArrayBuffer()) {
     v8::Local<v8::ArrayBuffer> array_buffer =
         v8::Local<v8::ArrayBuffer>::Cast(payload);
-    js_message.payload =
-        std::vector<uint8_t>(static_cast<uint8_t*>(array_buffer->Data()),
-                             static_cast<uint8_t*>(array_buffer->Data()) +
-                                 array_buffer->ByteLength());
+    mojo_base::BigBuffer big_buffer(array_buffer->ByteLength());
+    memcpy(big_buffer.data(), array_buffer->Data(), array_buffer->ByteLength());
+    js_message =
+        mojom::JsWebMessage::NewArrayBufferValue(std::move(big_buffer));
   } else {
     args->ThrowError();
     return;
@@ -220,7 +221,7 @@ void JsBinding::PostMessage(gin::Arguments* args) {
                         : nullptr;
   if (js_to_java_messaging) {
     js_to_java_messaging->PostMessage(
-        mojom::JsWebMessage::NewStringValue(std::move(message)),
+        std::move(js_message),
         blink::MessagePortChannel::ReleaseHandles(ports));
   }
 }

@@ -64,6 +64,24 @@ blink::WebMessagePayload ConvertToWebMessagePayloadFromJava(
   return std::u16string();
 }
 
+base::android::ScopedJavaLocalRef<jobject> ConvertJsWebMessageToJava(
+    js_injection::mojom::JsWebMessagePtr message) {
+  JNIEnv* env = base::android::AttachCurrentThread();
+  if (message->is_string_value()) {
+    auto& string = message->get_string_value();
+    return Java_MessagePayloadJni_createFromString(
+        env, base::android::ConvertUTF16ToJavaString(env, string));
+  } else if (message->is_array_buffer_value()) {
+    auto& array_buffer = message->get_array_buffer_value();
+    return Java_MessagePayloadJni_createFromArrayBuffer(
+        env, base::android::ToJavaByteArray(env, array_buffer.data(),
+                                            array_buffer.size()));
+  } else {
+    NOTREACHED() << "Unsupported or invalid JsWebMessage type.";
+    return nullptr;
+  }
+}
+
 js_injection::mojom::JsWebMessagePtr ConvertJsWebMessageFromJava(
     const base::android::ScopedJavaLocalRef<jobject>& java_message) {
   CHECK(java_message);

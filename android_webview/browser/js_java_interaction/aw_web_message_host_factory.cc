@@ -16,7 +16,7 @@
 #include "components/js_injection/browser/web_message.h"
 #include "components/js_injection/browser/web_message_host.h"
 #include "components/js_injection/common/origin_matcher.h"
-#include "content/browser/android/message_payload.h"
+#include "content/public/browser/android/message_payload.h"
 #include "content/public/browser/android/message_port_helper.h"
 
 namespace android_webview {
@@ -44,8 +44,8 @@ class AwWebMessageHost : public js_injection::WebMessageHost {
         content::android::CreateJavaMessagePort(std::move(message->ports));
     Java_WebMessageListenerHolder_onPostMessage(
         env, listener_,
-        content::android::ConvertWebMessagePayloadToJava(
-            message->message.payload),
+        content::android::ConvertJsWebMessageToJava(
+            std::move(message->message)),
         base::android::ConvertUTF8ToJavaString(env, origin_string_),
         is_main_frame_, jports, reply_proxy_.GetJavaPeer());
   }
