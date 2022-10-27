@@ -12,7 +12,6 @@
 #include "base/android/scoped_java_ref.h"
 #include "base/functional/overloaded.h"
 #include "base/notreached.h"
-#include "components/js_injection/common/interfaces.mojom-forward.h"
 #include "components/js_injection/common/interfaces.mojom.h"
 #include "content/public/android/content_jni_headers/MessagePayloadJni_jni.h"
 #include "mojo/public/cpp/base/big_buffer.h"
