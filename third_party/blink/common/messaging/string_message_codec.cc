@@ -16,14 +16,6 @@
 namespace blink {
 namespace {
 
-// Template helpers for visiting std::variant.
-template <class... Ts>
-struct overloaded : Ts... {
-  using Ts::operator()...;
-};
-template <class... Ts>
-overloaded(Ts...) -> overloaded<Ts...>;
-
 const uint32_t kVarIntShift = 7;
 const uint32_t kVarIntMask = (1 << kVarIntShift) - 1;
 
@@ -98,6 +90,67 @@ bool ContainsOnlyLatin1(const std::u16string& data) {
 }
 
 }  // namespace
+
+// static
+WebMessagePayloadView WebMessagePayloadView::NewArrayBuffer(
+    TransferableMessage&& message,
+    base::span<const uint8_t> data) {
+  WebMessagePayloadView view;
+  view.message_.emplace(std::move(message));
+  view.type_ = WebMessagePayloadType::kArrayBuffer;
+  view.array_buffer_storage_type_ =
+      ArrayBufferStorageType::kTransferableMessage;
+  view.array_buffer_data_ = data;
+  return view;
+}
+
+#if BUILDFLAG(IS_ANDROID)
+// static
+WebMessagePayloadView WebMessagePayloadView::NewArrayBuffer(
+    base::android::ScopedJavaLocalRef<jbyteArray> java_ref) {
+  WebMessagePayloadView view;
+  view.type_ = WebMessagePayloadType::kArrayBuffer;
+  view.array_buffer_storage_type_ = ArrayBufferStorageType::kJavaArray;
+  view.array_buffer_java_ref_ = java_ref;
+  return view;
+}
+#endif
+
+// static
+WebMessagePayloadView WebMessagePayloadView::NewString(std::u16string string) {
+  WebMessagePayloadView view;
+  view.type_ = WebMessagePayloadType::kString;
+  view.string_value_ = std::move(string);
+  return view;
+}
+
+WebMessagePayloadView::WebMessagePayloadView(WebMessagePayloadView&& other) {
+  switch (other.type_) {
+    case WebMessagePayloadType::kString:
+      type_ = WebMessagePayloadType::kString;
+      string_value_ = std::move(other.string_value_);
+      break;
+    case WebMessagePayloadType::kArrayBuffer:
+      type_ = WebMessagePayloadType::kArrayBuffer;
+      array_buffer_storage_type_ = other.array_buffer_storage_type_;
+      switch (array_buffer_storage_type_) {
+        case ArrayBufferStorageType::kTransferableMessage:
+          message_ = std::move(other.message_);
+          array_buffer_data_ = other.array_buffer_data_;
+          break;
+#if BUILDFLAG(IS_ANDROID)
+        case ArrayBufferStorageType::kJavaArray:
+          array_buffer_java_ref_ = std::move(other.array_buffer_java_ref_);
+          break;
+#endif
+      }
+      break;
+    default:
+      NOTREACHED() << "Invalid type: " << static_cast<int>(type_);
+      break;
+  }
+  other.type_ = WebMessagePayloadType::kInvalid;
+}
 
 TransferableMessage EncodeWebMessagePayload(WebMessagePayloadView payload) {
   TransferableMessage message;

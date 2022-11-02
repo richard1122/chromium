@@ -5,105 +5,90 @@
 #ifndef THIRD_PARTY_BLINK_PUBLIC_COMMON_MESSAGING_STRING_MESSAGE_CODEC_H_
 #define THIRD_PARTY_BLINK_PUBLIC_COMMON_MESSAGING_STRING_MESSAGE_CODEC_H_
 
-#include <jni.h>
 #include <string>
 #include <vector>
 
-#include "base/android/jni_android.h"
-#include "base/android/scoped_java_ref.h"
 #include "base/check_op.h"
 #include "base/containers/span.h"
 #include "base/notreached.h"
+#include "build/buildflag.h"
 #include "third_party/abseil-cpp/absl/types/optional.h"
-#include "third_party/abseil-cpp/absl/types/variant.h"
 #include "third_party/blink/public/common/common_export.h"
 #include "third_party/blink/public/common/messaging/transferable_message.h"
 
+#if BUILDFLAG(IS_ANDROID)
+#include <jni.h>
+#include "base/android/jni_android.h"
+#include "base/android/scoped_java_ref.h"
+#endif
+
 namespace blink {
 
-enum class WebMessagePayloadType {
+// Payload type of WebMessage.
+enum class BLINK_COMMON_EXPORT WebMessagePayloadType {
+  // Only when the WebMessagePayloadView is moved.
   kInvalid = 0,
   kString,
   kArrayBuffer,
 };
 
-class WebMessagePayloadView {
+// Represent view of WebMessage Payload between browser and renderer process.
+class BLINK_COMMON_EXPORT WebMessagePayloadView {
  private:
   enum class ArrayBufferStorageType {
     kTransferableMessage = 0,
+#if BUILDFLAG(IS_ANDROID)
     kJavaArray,
+#endif
   };
 
  public:
+  // Construct a ArrayBuffer type of WebMessagePayloadView, which is backed by
+  // TransferableMessage. Caller must ensure the |data| is backed by |message|.
+  static WebMessagePayloadView NewArrayBuffer(TransferableMessage&& message,
+                                              base::span<const uint8_t> data);
+
+#if BUILDFLAG(IS_ANDROID)
+  // Construct a ArrayBuffer type of WebMessagePayloadView, which is backed by
+  // Java Byte of Array.
+  static WebMessagePayloadView NewArrayBuffer(
+      base::android::ScopedJavaLocalRef<jbyteArray> java_ref);
+#endif
+
+  // Construct a String type of WebMessagePayloadView.
+  static WebMessagePayloadView NewString(std::u16string string);
+
   WebMessagePayloadView() = default;
-  WebMessagePayloadView(WebMessagePayloadView&& other)
-      : type_(other.type_), message_(std::move(other.message_)) {
-    switch (type_) {
-      case WebMessagePayloadType::kInvalid:
-        return;
-      case WebMessagePayloadType::kString:
-        string_value_ = std::move(other.string_value_);
-        return;
-      case WebMessagePayloadType::kArrayBuffer:
-        array_buffer_storage_type_ = other.array_buffer_storage_type_;
-        switch (array_buffer_storage_type_) {
-          case ArrayBufferStorageType::kTransferableMessage:
-            array_buffer_data_ = other.array_buffer_data_;
-            return;
-          case ArrayBufferStorageType::kJavaArray:
-            array_buffer_java_ref_ = std::move(other.array_buffer_java_ref_);
-            return;
-        }
-    }
-    NOTREACHED() << "Invalid type: " << static_cast<int>(type_);
-  }
+  WebMessagePayloadView(WebMessagePayloadView&& other);
 
   WebMessagePayloadView(const WebMessagePayloadView&) = delete;
   void operator=(const WebMessagePayloadView&) = delete;
 
-  static WebMessagePayloadView NewArrayBuffer(TransferableMessage&& message,
-                                              base::span<const uint8_t> data) {
-    WebMessagePayloadView view;
-    view.message_.emplace(std::move(message));
-    view.type_ = WebMessagePayloadType::kArrayBuffer;
-    view.array_buffer_storage_type_ =
-        ArrayBufferStorageType::kTransferableMessage;
-    view.array_buffer_data_ = data;
-    return view;
-  }
-
-  static WebMessagePayloadView NewArrayBuffer(
-      base::android::ScopedJavaLocalRef<jbyteArray> java_ref) {
-    WebMessagePayloadView view;
-    view.type_ = WebMessagePayloadType::kArrayBuffer;
-    view.array_buffer_storage_type_ = ArrayBufferStorageType::kJavaArray;
-    view.array_buffer_java_ref_ = java_ref;
-    return view;
-  }
-
-  static WebMessagePayloadView NewString(std::u16string string) {
-    WebMessagePayloadView view;
-    view.type_ = WebMessagePayloadType::kString;
-    view.string_value_ = std::move(string);
-    return view;
-  }
-
+  // Get type of the payload.
   WebMessagePayloadType GetType() const { return type_; }
+
+  // Get the String payload, only valid when type is kString.
+  // Returns a reference to the string payload.
   std::u16string& GetString() {
     CHECK_EQ(type_, WebMessagePayloadType::kString);
     CHECK(string_value_.has_value());
     return string_value_.value();
   }
+
+  // Get the String payload, only valid when type is kString.
   const std::u16string& GetString() const {
     CHECK_EQ(type_, WebMessagePayloadType::kString);
     CHECK(string_value_.has_value());
     return string_value_.value();
   }
+
+  // Get the ArrayBuffer size, only valid when type is kArrayBuffer.
   size_t GetArrayBufferSize() const {
     CHECK_EQ(type_, WebMessagePayloadType::kArrayBuffer);
     switch (array_buffer_storage_type_) {
       case ArrayBufferStorageType::kTransferableMessage:
         return array_buffer_data_.size();
+#if BUILDFLAG(IS_ANDROID)
       case ArrayBufferStorageType::kJavaArray:
         JNIEnv* env = base::android::AttachCurrentThread();
         jbyteArray j_byte_array = array_buffer_java_ref_.obj();
@@ -111,8 +96,14 @@ class WebMessagePayloadView {
         size_t j_size = env->GetArrayLength(j_byte_array);
         base::android::CheckException(env);
         return j_size;
+#endif
     }
   }
+
+  // Copy ArrayBuffer data to |dest|, only valid when type is kArrayBuffer.
+  // The existing JNI API does have a good way to expose content of Java Array
+  // to C++ without copy it first.
+  // Returns the number of bytes copied, or 0 if copy is not performed.
   size_t CopyArrayBufferData(base::span<uint8_t> dest) const {
     CHECK_EQ(type_, WebMessagePayloadType::kArrayBuffer);
     switch (array_buffer_storage_type_) {
@@ -125,6 +116,7 @@ class WebMessagePayloadView {
         memcpy(dest.data(), array_buffer_data_.data(),
                array_buffer_data_.size());
         return array_buffer_data_.size();
+#if BUILDFLAG(IS_ANDROID)
       case ArrayBufferStorageType::kJavaArray:
         JNIEnv* env = base::android::AttachCurrentThread();
         jbyteArray j_byte_array = array_buffer_java_ref_.obj();
@@ -138,8 +130,11 @@ class WebMessagePayloadView {
                                 reinterpret_cast<jbyte*>(dest.data()));
         base::android::CheckException(env);
         return j_size;
+#endif
     }
   }
+
+#if BUILDFLAG(IS_ANDROID)
   base::android::ScopedJavaLocalRef<jbyteArray>
   GetOrCreateArrayBufferJavaArray() const {
     CHECK_EQ(type_, WebMessagePayloadType::kArrayBuffer);
@@ -159,6 +154,7 @@ class WebMessagePayloadView {
             array_buffer_java_ref_);
     }
   }
+#endif
 
  private:
   WebMessagePayloadType type_;
@@ -170,7 +166,9 @@ class WebMessagePayloadView {
   // ArrayBuffer
   ArrayBufferStorageType array_buffer_storage_type_;
   base::span<const uint8_t> array_buffer_data_;
+#if BUILDFLAG(IS_ANDROID)
   base::android::ScopedJavaGlobalRef<jbyteArray> array_buffer_java_ref_;
+#endif
 };
 
 // To support exposing HTML message ports to Java, it is necessary to be able
