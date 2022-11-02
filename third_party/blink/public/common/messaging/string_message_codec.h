@@ -30,8 +30,7 @@ enum class WebMessagePayloadType {
 class WebMessagePayloadView {
  private:
   enum class ArrayBufferStorageType {
-    kInvalid = 0,
-    kTransferableMessage,
+    kTransferableMessage = 0,
     kJavaArray,
   };
 
@@ -48,8 +47,6 @@ class WebMessagePayloadView {
       case WebMessagePayloadType::kArrayBuffer:
         array_buffer_storage_type_ = other.array_buffer_storage_type_;
         switch (array_buffer_storage_type_) {
-          case ArrayBufferStorageType::kInvalid:
-            return;
           case ArrayBufferStorageType::kTransferableMessage:
             array_buffer_data_ = other.array_buffer_data_;
             return;
@@ -92,7 +89,7 @@ class WebMessagePayloadView {
   }
 
   WebMessagePayloadType GetType() const { return type_; }
-  std::u16string& GetString() {
+  const std::u16string& GetString() const {
     CHECK_EQ(type_, WebMessagePayloadType::kString);
     CHECK(string_value_.has_value());
     return string_value_.value();
@@ -100,24 +97,20 @@ class WebMessagePayloadView {
   size_t GetArrayBufferSize() const {
     CHECK_EQ(type_, WebMessagePayloadType::kArrayBuffer);
     switch (array_buffer_storage_type_) {
-      case ArrayBufferStorageType::kInvalid:
-        NOTREACHED();
-        return 0;
       case ArrayBufferStorageType::kTransferableMessage:
         return array_buffer_data_.size();
       case ArrayBufferStorageType::kJavaArray:
-        jbyteArray j_byte_array = array_buffer_java_ref_.obj();
-        if (!j_byte_array)
-          return 0;
         JNIEnv* env = base::android::AttachCurrentThread();
-        return env->GetArrayLength(j_byte_array);
+        jbyteArray j_byte_array = array_buffer_java_ref_.obj();
+        CHECK(j_byte_array);
+        size_t j_size = env->GetArrayLength(j_byte_array);
+        base::android::CheckException(env);
+        return j_size;
     }
   }
   size_t CopyArrayBufferData(base::span<uint8_t> dest) const {
     CHECK_EQ(type_, WebMessagePayloadType::kArrayBuffer);
     switch (array_buffer_storage_type_) {
-      case ArrayBufferStorageType::kInvalid:
-        return 0;
       case ArrayBufferStorageType::kTransferableMessage:
         CHECK_NE(array_buffer_data_.data(), nullptr);
         if (array_buffer_data_.size() > dest.size() ||
@@ -130,16 +123,35 @@ class WebMessagePayloadView {
       case ArrayBufferStorageType::kJavaArray:
         JNIEnv* env = base::android::AttachCurrentThread();
         jbyteArray j_byte_array = array_buffer_java_ref_.obj();
-        if (!j_byte_array) {
-          return 0;
-        }
+        CHECK(j_byte_array);
         size_t j_size = env->GetArrayLength(j_byte_array);
         if (j_size > dest.size() || j_size == 0) {
           return 0;
         }
+        base::android::CheckException(env);
         env->GetByteArrayRegion(j_byte_array, 0, j_size,
                                 reinterpret_cast<jbyte*>(dest.data()));
+        base::android::CheckException(env);
         return j_size;
+    }
+  }
+  base::android::ScopedJavaLocalRef<jbyteArray>
+  GetOrCreateArrayBufferJavaArray() const {
+    CHECK_EQ(type_, WebMessagePayloadType::kArrayBuffer);
+    switch (array_buffer_storage_type_) {
+      case ArrayBufferStorageType::kTransferableMessage: {
+        JNIEnv* env = base::android::AttachCurrentThread();
+        jbyteArray j_byte_array = env->NewByteArray(array_buffer_data_.size());
+        base::android::CheckException(env);
+        env->SetByteArrayRegion(
+            j_byte_array, 0, array_buffer_data_.size(),
+            reinterpret_cast<const jbyte*>(array_buffer_data_.data()));
+        base::android::CheckException(env);
+        return base::android::ScopedJavaLocalRef<jbyteArray>(env, j_byte_array);
+      }
+      case ArrayBufferStorageType::kJavaArray:
+        return base::android::ScopedJavaLocalRef<jbyteArray>(
+            array_buffer_java_ref_);
     }
   }
 
@@ -151,8 +163,7 @@ class WebMessagePayloadView {
   absl::optional<std::u16string> string_value_;
 
   // ArrayBuffer
-  ArrayBufferStorageType array_buffer_storage_type_{
-      ArrayBufferStorageType::kInvalid};
+  ArrayBufferStorageType array_buffer_storage_type_;
   base::span<const uint8_t> array_buffer_data_;
   base::android::ScopedJavaGlobalRef<jbyteArray> array_buffer_java_ref_;
 };

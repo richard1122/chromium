@@ -21,9 +21,9 @@ namespace content::android {
 // Construct Java `org.chromium.content_public.browser.MessagePayload` from
 // `blink::WebMessagePayload`.
 CONTENT_EXPORT base::android::ScopedJavaLocalRef<jobject>
-ConvertWebMessagePayloadToJava(const blink::WebMessagePayload& payload);
+ConvertWebMessagePayloadToJava(const blink::WebMessagePayloadView& payload);
 
-CONTENT_EXPORT blink::WebMessagePayload ConvertToWebMessagePayloadFromJava(
+CONTENT_EXPORT blink::WebMessagePayloadView ConvertToWebMessagePayloadFromJava(
     const base::android::ScopedJavaLocalRef<
         jobject>& /* org.chromium.content_public.browser.MessagePayload */);
 
