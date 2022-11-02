@@ -21,10 +21,6 @@
 
 namespace blink {
 
-// Represent WebMessage payload type between browser and renderer process.
-// std::vector<uint8_t>: the ArrayBuffer.
-using WebMessagePayload = absl::variant<std::u16string, std::vector<uint8_t>>;
-
 enum class WebMessagePayloadType {
   kInvalid = 0,
   kString,
@@ -101,6 +97,22 @@ class WebMessagePayloadView {
     CHECK(string_value_.has_value());
     return string_value_.value();
   }
+  size_t GetArrayBufferSize() const {
+    CHECK_EQ(type_, WebMessagePayloadType::kArrayBuffer);
+    switch (array_buffer_storage_type_) {
+      case ArrayBufferStorageType::kInvalid:
+        NOTREACHED();
+        return 0;
+      case ArrayBufferStorageType::kTransferableMessage:
+        return array_buffer_data_.size();
+      case ArrayBufferStorageType::kJavaArray:
+        jbyteArray j_byte_array = array_buffer_java_ref_.obj();
+        if (!j_byte_array)
+          return 0;
+        JNIEnv* env = base::android::AttachCurrentThread();
+        return env->GetArrayLength(j_byte_array);
+    }
+  }
   size_t CopyArrayBufferData(base::span<uint8_t> dest) const {
     CHECK_EQ(type_, WebMessagePayloadType::kArrayBuffer);
     switch (array_buffer_storage_type_) {
@@ -157,10 +169,10 @@ class WebMessagePayloadView {
 // IndexedDB.
 
 BLINK_COMMON_EXPORT TransferableMessage
-EncodeWebMessagePayload(const WebMessagePayload& payload);
+EncodeWebMessagePayload(WebMessagePayloadView payload);
 
-BLINK_COMMON_EXPORT absl::optional<WebMessagePayload> DecodeToWebMessagePayload(
-    const TransferableMessage& message);
+BLINK_COMMON_EXPORT absl::optional<WebMessagePayloadView>
+DecodeToWebMessagePayload(TransferableMessage message);
 
 }  // namespace blink
 

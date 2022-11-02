@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "base/containers/buffer_iterator.h"
+#include "base/containers/span.h"
 #include "base/logging.h"
 #include "base/notreached.h"
 #include "mojo/public/cpp/base/big_buffer.h"
@@ -98,41 +99,40 @@ bool ContainsOnlyLatin1(const std::u16string& data) {
 
 }  // namespace
 
-TransferableMessage EncodeWebMessagePayload(const WebMessagePayload& payload) {
+TransferableMessage EncodeWebMessagePayload(WebMessagePayloadView payload) {
   TransferableMessage message;
   std::vector<uint8_t> buffer;
   WriteUint8(kVersionTag, &buffer);
   WriteUint32(kVersion, &buffer);
 
-  absl::visit(
-      overloaded{
-          [&](const std::u16string& str) {
-            if (ContainsOnlyLatin1(str)) {
-              std::string data_latin1(str.cbegin(), str.cend());
-              WriteUint8(kOneByteStringTag, &buffer);
-              WriteUint32(data_latin1.size(), &buffer);
-              WriteBytes(data_latin1.c_str(), data_latin1.size(), &buffer);
-            } else {
-              size_t num_bytes = str.size() * sizeof(char16_t);
-              if ((buffer.size() + 1 + BytesNeededForUint32(num_bytes)) & 1)
-                WriteUint8(kPaddingTag, &buffer);
-              WriteUint8(kTwoByteStringTag, &buffer);
-              WriteUint32(num_bytes, &buffer);
-              WriteBytes(reinterpret_cast<const char*>(str.data()), num_bytes,
-                         &buffer);
-            }
-          },
-          [&](const std::vector<uint8_t>& array_buffer) {
-            WriteUint8(kArrayBufferTransferTag, &buffer);
-            // Write at the first slot.
-            WriteUint32(0, &buffer);
+  if (payload.GetType() == WebMessagePayloadType::kString) {
+    auto& str = payload.GetString();
+    if (ContainsOnlyLatin1(str)) {
+      std::string data_latin1(str.cbegin(), str.cend());
+      WriteUint8(kOneByteStringTag, &buffer);
+      WriteUint32(data_latin1.size(), &buffer);
+      WriteBytes(data_latin1.c_str(), data_latin1.size(), &buffer);
+    } else {
+      size_t num_bytes = str.size() * sizeof(char16_t);
+      if ((buffer.size() + 1 + BytesNeededForUint32(num_bytes)) & 1)
+        WriteUint8(kPaddingTag, &buffer);
+      WriteUint8(kTwoByteStringTag, &buffer);
+      WriteUint32(num_bytes, &buffer);
+      WriteBytes(reinterpret_cast<const char*>(str.data()), num_bytes, &buffer);
+    }
+  } else if (payload.GetType() == WebMessagePayloadType::kArrayBuffer) {
+    WriteUint8(kArrayBufferTransferTag, &buffer);
+    // Write at the first slot.
+    WriteUint32(0, &buffer);
 
-            mojo_base::BigBuffer big_buffer(array_buffer);
-            message.array_buffer_contents_array.push_back(
-                mojom::SerializedArrayBufferContents::New(
-                    std::move(big_buffer)));
-          }},
-      payload);
+    mojo_base::BigBuffer big_buffer(payload.GetArrayBufferSize());
+    auto span = base::make_span(big_buffer.data(), big_buffer.size());
+    payload.CopyArrayBufferData(span);
+    message.array_buffer_contents_array.push_back(
+        mojom::SerializedArrayBufferContents::New(std::move(big_buffer)));
+  } else {
+    NOTREACHED() << "Invalid payload type.";
+  }
 
   message.owned_encoded_message = std::move(buffer);
   message.encoded_message = message.owned_encoded_message;
@@ -140,8 +140,8 @@ TransferableMessage EncodeWebMessagePayload(const WebMessagePayload& payload) {
   return message;
 }
 
-absl::optional<WebMessagePayload> DecodeToWebMessagePayload(
-    const TransferableMessage& message) {
+absl::optional<WebMessagePayloadView> DecodeToWebMessagePayload(
+    TransferableMessage message) {
   base::BufferIterator<const uint8_t> iter(message.encoded_message);
   uint8_t tag;
 
@@ -184,7 +184,8 @@ absl::optional<WebMessagePayload> DecodeToWebMessagePayload(
       auto span = iter.Span<unsigned char>(num_bytes / sizeof(unsigned char));
       std::u16string str(span.begin(), span.end());
       return span.size_bytes() == num_bytes
-                 ? absl::make_optional(WebMessagePayload(std::move(str)))
+                 ? absl::make_optional(
+                       WebMessagePayloadView::NewString(std::move(str)))
                  : absl::nullopt;
     }
     case kTwoByteStringTag: {
@@ -194,7 +195,8 @@ absl::optional<WebMessagePayload> DecodeToWebMessagePayload(
       auto span = iter.Span<char16_t>(num_bytes / sizeof(char16_t));
       std::u16string str(span.begin(), span.end());
       return span.size_bytes() == num_bytes
-                 ? absl::make_optional(WebMessagePayload(std::move(str)))
+                 ? absl::make_optional(
+                       WebMessagePayloadView::NewString(std::move(str)))
                  : absl::nullopt;
     }
     case kArrayBuffer: {
@@ -203,8 +205,8 @@ absl::optional<WebMessagePayload> DecodeToWebMessagePayload(
         return absl::nullopt;
       auto span = iter.Span<uint8_t>(num_bytes);
       return span.size_bytes() == num_bytes
-                 ? absl::make_optional(
-                       WebMessagePayload(std::vector(span.begin(), span.end())))
+                 ? absl::make_optional(WebMessagePayloadView::NewArrayBuffer(
+                       std::move(message), span))
                  : absl::nullopt;
     }
     case kArrayBufferTransferTag: {
@@ -217,9 +219,8 @@ absl::optional<WebMessagePayload> DecodeToWebMessagePayload(
       if (message.array_buffer_contents_array.size() != 1)
         return absl::nullopt;
       const auto& big_buffer = message.array_buffer_contents_array[0]->contents;
-      // Data is from renderer process, copy it first before use.
-      return std::vector(big_buffer.data(),
-                         big_buffer.data() + big_buffer.size());
+      const auto span = base::make_span(big_buffer.data(), big_buffer.size());
+      return WebMessagePayloadView::NewArrayBuffer(std::move(message), span);
     }
   }
 
