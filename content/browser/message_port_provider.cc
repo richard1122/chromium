@@ -33,7 +33,7 @@ void PostMessageToFrameInternal(
     Page& page,
     const std::u16string& source_origin,
     const std::u16string& target_origin,
-    const blink::WebMessagePayload& data,
+    blink::WebMessagePayloadView data,
     std::vector<blink::MessagePortDescriptor> ports) {
   DCHECK_CURRENTLY_ON(BrowserThread::UI);
 
@@ -43,7 +43,8 @@ void PostMessageToFrameInternal(
   for (auto& port : ports)
     channels.emplace_back(MessagePortChannel(std::move(port)));
 
-  blink::TransferableMessage message = blink::EncodeWebMessagePayload(data);
+  blink::TransferableMessage message =
+      blink::EncodeWebMessagePayload(std::move(data));
   message.ports = std::move(channels);
   // As the message is posted from the embedder and not from another renderer,
   // set the agent cluster ID to the embedder's.
@@ -72,8 +73,9 @@ void MessagePortProvider::PostMessageToFrame(
     Page& page,
     const std::u16string& source_origin,
     const std::u16string& target_origin,
-    const blink::WebMessagePayload& data) {
-  PostMessageToFrameInternal(page, source_origin, target_origin, data,
+    blink::WebMessagePayloadView data) {
+  PostMessageToFrameInternal(page, source_origin, target_origin,
+                             std::move(data),
                              std::vector<blink::MessagePortDescriptor>());
 }
 

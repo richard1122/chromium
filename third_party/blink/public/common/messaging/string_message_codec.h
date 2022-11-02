@@ -89,6 +89,11 @@ class WebMessagePayloadView {
   }
 
   WebMessagePayloadType GetType() const { return type_; }
+  std::u16string& GetString() {
+    CHECK_EQ(type_, WebMessagePayloadType::kString);
+    CHECK(string_value_.has_value());
+    return string_value_.value();
+  }
   const std::u16string& GetString() const {
     CHECK_EQ(type_, WebMessagePayloadType::kString);
     CHECK(string_value_.has_value());
