@@ -1,0 +1,18 @@
+<html>
+
+<head>
+  <title>reply</title>
+  <script>
+    let channel = new MessageChannel();
+    channel.port2.onmessage = (e) => {
+      channel.port2.postMessage(e.data, [e.data]);
+    }
+    myObject.postMessage("Hello", [channel.port1]);
+  </script>
+</head>
+
+<body>
+  <div>post message waiting for reply</div>
+</body>
+
+</html>
