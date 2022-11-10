@@ -69,91 +69,25 @@ class BLINK_COMMON_EXPORT WebMessagePayloadView {
 
   // Get the String payload, only valid when type is kString.
   // Returns a reference to the string payload.
-  std::u16string& GetString() {
-    CHECK_EQ(type_, WebMessagePayloadType::kString);
-    CHECK(string_value_.has_value());
-    return string_value_.value();
-  }
+  std::u16string& GetString();
 
   // Get the String payload, only valid when type is kString.
-  const std::u16string& GetString() const {
-    CHECK_EQ(type_, WebMessagePayloadType::kString);
-    CHECK(string_value_.has_value());
-    return string_value_.value();
-  }
+  const std::u16string& GetString() const;
 
   // Get the ArrayBuffer size, only valid when type is kArrayBuffer.
-  size_t GetArrayBufferSize() const {
-    CHECK_EQ(type_, WebMessagePayloadType::kArrayBuffer);
-    switch (array_buffer_storage_type_) {
-      case ArrayBufferStorageType::kTransferableMessage:
-        return array_buffer_data_.size();
-#if BUILDFLAG(IS_ANDROID)
-      case ArrayBufferStorageType::kJavaArray:
-        JNIEnv* env = base::android::AttachCurrentThread();
-        jbyteArray j_byte_array = array_buffer_java_ref_.obj();
-        CHECK(j_byte_array);
-        size_t j_size = env->GetArrayLength(j_byte_array);
-        base::android::CheckException(env);
-        return j_size;
-#endif
-    }
-  }
+  size_t GetArrayBufferSize() const;
 
   // Copy ArrayBuffer data to |dest|, only valid when type is kArrayBuffer.
   // The existing JNI API does have a good way to expose content of Java Array
   // to C++ without copy it first.
   // Returns the number of bytes copied, or 0 if copy is not performed.
-  size_t CopyArrayBufferData(base::span<uint8_t> dest) const {
-    CHECK_EQ(type_, WebMessagePayloadType::kArrayBuffer);
-    switch (array_buffer_storage_type_) {
-      case ArrayBufferStorageType::kTransferableMessage:
-        CHECK_NE(array_buffer_data_.data(), nullptr);
-        if (array_buffer_data_.size() > dest.size() ||
-            array_buffer_data_.size() == 0) {
-          return 0;
-        }
-        memcpy(dest.data(), array_buffer_data_.data(),
-               array_buffer_data_.size());
-        return array_buffer_data_.size();
-#if BUILDFLAG(IS_ANDROID)
-      case ArrayBufferStorageType::kJavaArray:
-        JNIEnv* env = base::android::AttachCurrentThread();
-        jbyteArray j_byte_array = array_buffer_java_ref_.obj();
-        CHECK(j_byte_array);
-        size_t j_size = env->GetArrayLength(j_byte_array);
-        if (j_size > dest.size() || j_size == 0) {
-          return 0;
-        }
-        base::android::CheckException(env);
-        env->GetByteArrayRegion(j_byte_array, 0, j_size,
-                                reinterpret_cast<jbyte*>(dest.data()));
-        base::android::CheckException(env);
-        return j_size;
-#endif
-    }
-  }
+  size_t CopyArrayBufferData(base::span<uint8_t> dest) const;
 
 #if BUILDFLAG(IS_ANDROID)
+  // Get the existing Java Byte Array if the payload is backed by Java array.
+  // Or create a new Java Byte Array and copy the content of ArrayBuffer to it.
   base::android::ScopedJavaLocalRef<jbyteArray>
-  GetOrCreateArrayBufferJavaArray() const {
-    CHECK_EQ(type_, WebMessagePayloadType::kArrayBuffer);
-    switch (array_buffer_storage_type_) {
-      case ArrayBufferStorageType::kTransferableMessage: {
-        JNIEnv* env = base::android::AttachCurrentThread();
-        jbyteArray j_byte_array = env->NewByteArray(array_buffer_data_.size());
-        base::android::CheckException(env);
-        env->SetByteArrayRegion(
-            j_byte_array, 0, array_buffer_data_.size(),
-            reinterpret_cast<const jbyte*>(array_buffer_data_.data()));
-        base::android::CheckException(env);
-        return base::android::ScopedJavaLocalRef<jbyteArray>(env, j_byte_array);
-      }
-      case ArrayBufferStorageType::kJavaArray:
-        return base::android::ScopedJavaLocalRef<jbyteArray>(
-            array_buffer_java_ref_);
-    }
-  }
+  GetOrCreateArrayBufferJavaArray() const;
 #endif
 
  private:

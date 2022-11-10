@@ -4,6 +4,7 @@
 
 #include "third_party/blink/public/common/messaging/string_message_codec.h"
 
+#include <string>
 #include <vector>
 
 #include "base/containers/buffer_iterator.h"
@@ -151,6 +152,87 @@ WebMessagePayloadView::WebMessagePayloadView(WebMessagePayloadView&& other) {
   }
   other.type_ = WebMessagePayloadType::kInvalid;
 }
+
+std::u16string& WebMessagePayloadView::GetString() {
+  CHECK_EQ(type_, WebMessagePayloadType::kString);
+  CHECK(string_value_.has_value());
+  return string_value_.value();
+}
+
+const std::u16string& WebMessagePayloadView::GetString() const {
+  CHECK_EQ(type_, WebMessagePayloadType::kString);
+  CHECK(string_value_.has_value());
+  return string_value_.value();
+}
+
+size_t WebMessagePayloadView::GetArrayBufferSize() const {
+  CHECK_EQ(type_, WebMessagePayloadType::kArrayBuffer);
+  switch (array_buffer_storage_type_) {
+    case ArrayBufferStorageType::kTransferableMessage:
+      return array_buffer_data_.size();
+#if BUILDFLAG(IS_ANDROID)
+    case ArrayBufferStorageType::kJavaArray:
+      JNIEnv* env = base::android::AttachCurrentThread();
+      jbyteArray j_byte_array = array_buffer_java_ref_.obj();
+      CHECK(j_byte_array);
+      size_t j_size = env->GetArrayLength(j_byte_array);
+      base::android::CheckException(env);
+      return j_size;
+#endif
+  }
+}
+
+size_t WebMessagePayloadView::CopyArrayBufferData(
+    base::span<uint8_t> dest) const {
+  CHECK_EQ(type_, WebMessagePayloadType::kArrayBuffer);
+  switch (array_buffer_storage_type_) {
+    case ArrayBufferStorageType::kTransferableMessage:
+      CHECK_NE(array_buffer_data_.data(), nullptr);
+      if (array_buffer_data_.size() > dest.size() ||
+          array_buffer_data_.size() == 0) {
+        return 0;
+      }
+      memcpy(dest.data(), array_buffer_data_.data(), array_buffer_data_.size());
+      return array_buffer_data_.size();
+#if BUILDFLAG(IS_ANDROID)
+    case ArrayBufferStorageType::kJavaArray:
+      JNIEnv* env = base::android::AttachCurrentThread();
+      jbyteArray j_byte_array = array_buffer_java_ref_.obj();
+      CHECK(j_byte_array);
+      size_t j_size = env->GetArrayLength(j_byte_array);
+      if (j_size > dest.size() || j_size == 0) {
+        return 0;
+      }
+      base::android::CheckException(env);
+      env->GetByteArrayRegion(j_byte_array, 0, j_size,
+                              reinterpret_cast<jbyte*>(dest.data()));
+      base::android::CheckException(env);
+      return j_size;
+#endif
+  }
+}
+
+#if BUILDFLAG(IS_ANDROID)
+base::android::ScopedJavaLocalRef<jbyteArray>
+WebMessagePayloadView::GetOrCreateArrayBufferJavaArray() const {
+  CHECK_EQ(type_, WebMessagePayloadType::kArrayBuffer);
+  switch (array_buffer_storage_type_) {
+    case ArrayBufferStorageType::kTransferableMessage: {
+      JNIEnv* env = base::android::AttachCurrentThread();
+      jbyteArray j_byte_array = env->NewByteArray(array_buffer_data_.size());
+      base::android::CheckException(env);
+      env->SetByteArrayRegion(
+          j_byte_array, 0, array_buffer_data_.size(),
+          reinterpret_cast<const jbyte*>(array_buffer_data_.data()));
+      base::android::CheckException(env);
+      return base::android::ScopedJavaLocalRef<jbyteArray>(env, j_byte_array);
+    }
+    case ArrayBufferStorageType::kJavaArray:
+      return base::android::ScopedJavaLocalRef<jbyteArray>(
+          array_buffer_java_ref_);
+  }
+}
+#endif
 
 TransferableMessage EncodeWebMessagePayload(WebMessagePayloadView payload) {
   TransferableMessage message;
