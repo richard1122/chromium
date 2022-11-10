@@ -6,9 +6,12 @@
 #include <cstddef>
 #include <string>
 
+#include "base/containers/span.h"
+#include "mojo/public/cpp/base/big_buffer.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "third_party/blink/public/common/messaging/string_message_codec.h"
 #include "third_party/blink/public/common/messaging/transferable_message.h"
+#include "third_party/blink/public/mojom/array_buffer/array_buffer_contents.mojom.h"
 
 namespace content {
 namespace {
@@ -17,22 +20,28 @@ TEST(MessagePayloadTest, SelfTest_String) {
   std::u16string string = u"Hello";
 
   auto generated_message = android::ConvertToWebMessagePayloadFromJava(
-      android::ConvertWebMessagePayloadToJava(string));
-  EXPECT_EQ(blink::WebMessagePayload(string), generated_message);
+      android::ConvertWebMessagePayloadToJava(
+          blink::WebMessagePayloadView::NewString(string)));
+  EXPECT_EQ(string, generated_message.GetString());
 }
 
 TEST(MessagePayloadTest, SelfTest_ArrayBuffer) {
   std::vector<uint8_t> data(200, 0XFF);
+  blink::TransferableMessage message;
+  message.array_buffer_contents_array.emplace_back(
+      blink::mojom::SerializedArrayBufferContents::New(
+          mojo_base::BigBuffer(data)));
   auto generated_message = android::ConvertToWebMessagePayloadFromJava(
-      android::ConvertWebMessagePayloadToJava(data));
-  EXPECT_EQ(blink::WebMessagePayload(data), generated_message);
-}
+      android::ConvertWebMessagePayloadToJava(
+          blink::WebMessagePayloadView::NewArrayBuffer(
+              std::move(message),
+              base::make_span(
+                  message.array_buffer_contents_array[0]->contents.data(),
+                  message.array_buffer_contents_array[0]->contents.size()))));
 
-TEST(MessagePayloadTest, SelfTest_ArrayBufferEmpty) {
-  std::vector<uint8_t> data;
-  auto generated_message = android::ConvertToWebMessagePayloadFromJava(
-      android::ConvertWebMessagePayloadToJava(data));
-  EXPECT_EQ(blink::WebMessagePayload(data), generated_message);
+  std::vector<uint8_t> test_result(200);
+  generated_message.CopyArrayBufferData(base::make_span(test_result));
+  EXPECT_EQ(data, test_result);
 }
 
 }  // namespace
