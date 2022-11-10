@@ -14,6 +14,12 @@
 #include "mojo/public/cpp/base/big_buffer.h"
 #include "third_party/blink/public/mojom/array_buffer/array_buffer_contents.mojom.h"
 
+#if BUILDFLAG(IS_ANDROID)
+#include <jni.h>
+#include "base/android/jni_android.h"
+#include "base/android/scoped_java_ref.h"
+#endif
+
 namespace blink {
 namespace {
 

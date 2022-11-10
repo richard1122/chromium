@@ -8,17 +8,13 @@
 #include <string>
 #include <vector>
 
-#include "base/check_op.h"
 #include "base/containers/span.h"
-#include "base/notreached.h"
 #include "build/buildflag.h"
 #include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/blink/public/common/common_export.h"
 #include "third_party/blink/public/common/messaging/transferable_message.h"
 
 #if BUILDFLAG(IS_ANDROID)
-#include <jni.h>
-#include "base/android/jni_android.h"
 #include "base/android/scoped_java_ref.h"
 #endif
 
