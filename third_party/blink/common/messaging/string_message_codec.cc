@@ -4,6 +4,7 @@
 
 #include "third_party/blink/public/common/messaging/string_message_codec.h"
 
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -47,7 +48,7 @@ class VectorArrayBuffer : public WebMessageArrayBufferPayload {
   size_t length_;
 };
 
-// An arrayBufferPayload impl based on mojo::BigBuffer.
+// An ArrayBufferPayload impl based on mojo::BigBuffer.
 class BigBufferArrayBuffer : public WebMessageArrayBufferPayload {
  public:
   explicit BigBufferArrayBuffer(mojo_base::BigBuffer data)
