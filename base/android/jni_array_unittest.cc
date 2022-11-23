@@ -56,9 +56,9 @@ TEST(JniArray, BasicConversions) {
   EXPECT_EQ(expected_vec, vectorFromBytes);
   EXPECT_EQ(expected_vec, vectorFromVector);
 
-  std::vector<uint8_t> vectorForSpanTest(expected_vec.size());
-  JavaByteArrayToByteSpan(env, bytes, base::make_span(vectorForSpanTest));
-  EXPECT_EQ(expected_vec, vectorForSpanTest);
+  std::vector<uint8_t> vector_for_span_test(expected_vec.size());
+  JavaByteArrayToByteSpan(env, bytes, base::make_span(vector_for_span_test));
+  EXPECT_EQ(expected_vec, vector_for_span_test);
 
   AppendJavaByteArrayToByteVector(env, bytes, &vectorFromBytes);
   EXPECT_EQ(8U, vectorFromBytes.size());
