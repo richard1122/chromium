@@ -13,9 +13,7 @@
 #include "base/containers/span.h"
 #include "base/functional/overloaded.h"
 #include "base/notreached.h"
-#include "components/js_injection/common/interfaces.mojom.h"
 #include "content/public/android/content_jni_headers/MessagePayloadJni_jni.h"
-#include "mojo/public/cpp/base/big_buffer.h"
 #include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/abseil-cpp/absl/types/variant.h"
 #include "third_party/blink/public/common/messaging/string_message_codec.h"
@@ -108,42 +106,6 @@ blink::WebMessagePayload ConvertToWebMessagePayloadFromJava(
   }
   NOTREACHED() << "Unsupported or invalid Java MessagePayload type.";
   return std::u16string();
-}
-
-js_injection::mojom::JsWebMessagePtr ConvertJsWebMessageFromJava(
-    const base::android::ScopedJavaLocalRef<jobject>& java_message) {
-  CHECK(java_message);
-  JNIEnv* env = base::android::AttachCurrentThread();
-  const MessagePayloadType type = static_cast<MessagePayloadType>(
-      Java_MessagePayloadJni_getType(env, java_message));
-
-  switch (type) {
-    case MessagePayloadType::kString:
-      return js_injection::mojom::JsWebMessage::NewStringValue(
-          base::android::ConvertJavaStringToUTF16(
-              Java_MessagePayloadJni_getAsString(env, java_message)));
-    case MessagePayloadType::kArrayBuffer: {
-      auto java_array =
-          Java_MessagePayloadJni_getAsArrayBuffer(env, java_message);
-      size_t length =
-          static_cast<size_t>(env->GetArrayLength(java_array.obj()));
-      base::android::CheckException(env);
-      CHECK(length >= 0);
-
-      mojo_base::BigBuffer buffer(length);
-      if (length > 0) {
-        env->GetByteArrayRegion(java_array.obj(), 0, length,
-                                reinterpret_cast<jbyte*>(buffer.data()));
-        base::android::CheckException(env);
-      }
-      return js_injection::mojom::JsWebMessage::NewArrayBufferValue(
-          std::move(buffer));
-    }
-    case MessagePayloadType::kInvalid:
-      break;
-  }
-  NOTREACHED() << "Unsupported or invalid Java MessagePayload type.";
-  return js_injection::mojom::JsWebMessage::NewStringValue(std::u16string());
 }
 
 }  // namespace content::android

@@ -12,7 +12,6 @@ include_rules = [
   "+components/download/public/common",
   "+components/file_access",
   "+components/filename_generation",
-  "+components/js_injection/common",
   "+components/permissions/features.h",
   "+components/power_monitor",
   "+components/services/font",
