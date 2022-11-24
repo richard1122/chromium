@@ -11,7 +11,6 @@ import android.webkit.JavascriptInterface;
 
 import androidx.test.filters.SmallTest;
 
-import org.chromium.base.test.util.Batch;
 import org.hamcrest.Matchers;
 import org.junit.After;
 import org.junit.Assert;
@@ -28,6 +27,8 @@ import org.chromium.android_webview.test.TestAwContentsClient.ShouldInterceptReq
 import org.chromium.android_webview.test.util.CommonResources;
 import org.chromium.android_webview.test.util.JSUtils;
 import org.chromium.base.ThreadUtils;
+import org.chromium.base.test.util.Batch;
+import org.chromium.base.test.util.CommandLineFlags;
 import org.chromium.base.test.util.Criteria;
 import org.chromium.base.test.util.CriteriaHelper;
 import org.chromium.base.test.util.CriteriaNotSatisfiedException;
