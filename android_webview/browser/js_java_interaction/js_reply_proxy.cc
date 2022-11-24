@@ -6,6 +6,7 @@
 
 #include <utility>
 
+#include "android_webview/browser/js_java_interaction/converter.h"
 #include "android_webview/browser_jni_headers/JsReplyProxy_jni.h"
 #include "base/android/jni_string.h"
 #include "base/android/scoped_java_ref.h"
@@ -37,8 +38,9 @@ base::android::ScopedJavaLocalRef<jobject> JsReplyProxy::GetJavaPeer() {
 void JsReplyProxy::PostMessage(
     JNIEnv* env,
     const base::android::JavaParamRef<jobject>& payload) {
-  reply_proxy_->PostWebMessage(content::android::ConvertJsWebMessageFromJava(
-      base::android::ScopedJavaLocalRef<jobject>(payload)));
+  reply_proxy_->PostWebMessage(ConvertToJsWebMessagePtr(
+      content::android::ConvertToWebMessagePayloadFromJava(
+          base::android::ScopedJavaLocalRef<jobject>(payload))));
 }
 
 }  // namespace android_webview
