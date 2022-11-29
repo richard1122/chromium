@@ -34,8 +34,10 @@ public class JsReplyProxy extends AwSupportLibIsomorphic {
      */
     public void postMessage(@NonNull final MessagePayload payload) {
         if (mNativeJsReplyProxy == 0) return;
-        PostTask.runOrPostTask(UiThreadTaskTraits.USER_VISIBLE,
-                () -> JsReplyProxyJni.get().postMessage(mNativeJsReplyProxy, payload));
+        PostTask.runOrPostTask(UiThreadTaskTraits.USER_VISIBLE, () -> {
+            if (mNativeJsReplyProxy == 0) return;
+            JsReplyProxyJni.get().postMessage(mNativeJsReplyProxy, payload);
+        });
     }
 
     @CalledByNative

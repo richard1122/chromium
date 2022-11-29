@@ -26,7 +26,7 @@ class SupportLibJsReplyProxyAdapter
     @Override
     public void postMessage(String message) {
         recordApiCall(ApiCall.JS_REPLY_POST_MESSAGE);
-        // TODO(crrev.com/1374142): Adopt MessagePayload in AndroidX.
+        // TODO(crbug.com/1374142): Adopt MessagePayload in AndroidX.
         mReplyProxy.postMessage(new MessagePayload(message));
     }
 
