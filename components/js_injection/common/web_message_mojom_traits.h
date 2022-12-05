@@ -18,7 +18,7 @@ namespace mojo {
 template <>
 struct UnionTraits<js_injection::mojom::JsWebMessageDataView,
                    blink::WebMessagePayload> {
-  static std::u16string string_value(blink::WebMessagePayload& payload) {
+  static std::u16string string_value(const blink::WebMessagePayload& payload) {
     return absl::get<std::u16string>(payload);
   }
 
