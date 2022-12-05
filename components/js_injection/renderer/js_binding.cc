@@ -8,6 +8,7 @@
 #include <vector>
 
 #include "base/containers/contains.h"
+#include "base/functional/overloaded.h"
 #include "base/ranges/algorithm.h"
 #include "base/strings/string_util.h"
 #include "components/js_injection/common/interfaces.mojom-forward.h"
@@ -114,26 +115,23 @@ void JsBinding::OnPostMessage(blink::WebMessagePayload message) {
   v8::TryCatch try_catch(isolate);
   try_catch.SetVerbose(true);
 
-  v8::Local<v8::Value> v8_message;
-  if (absl::holds_alternative<std::u16string>(message)) {
-    v8_message = gin::ConvertToV8(
-        isolate, std::move(absl::get<std::u16string>(message)));
-  } else if (absl::holds_alternative<
-                 std::unique_ptr<blink::WebMessageArrayBufferPayload>>(
-                 message)) {
-    auto& array_buffer =
-        absl::get<std::unique_ptr<blink::WebMessageArrayBufferPayload>>(
-            message);
-    auto backing_store =
-        v8::ArrayBuffer::NewBackingStore(isolate, array_buffer->GetLength());
-    CHECK(backing_store->ByteLength() == array_buffer->GetLength());
-    array_buffer->CopyInto(
-        base::make_span(static_cast<uint8_t*>(backing_store->Data()),
-                        backing_store->ByteLength()));
-    v8_message = v8::ArrayBuffer::New(isolate, std::move(backing_store));
-  } else {
-    NOTREACHED() << "Unknown JsWebMessage type.";
-  }
+  v8::Local<v8::Value> v8_message = absl::visit(
+      base::Overloaded{
+          [isolate](std::u16string& string_value) -> v8::Local<v8::Value> {
+            return gin::ConvertToV8(isolate, std::move(string_value));
+          },
+          [isolate](std::unique_ptr<blink::WebMessageArrayBufferPayload>&
+                        array_buffer_value) -> v8::Local<v8::Value> {
+            auto backing_store = v8::ArrayBuffer::NewBackingStore(
+                isolate, array_buffer_value->GetLength());
+            CHECK(backing_store->ByteLength() ==
+                  array_buffer_value->GetLength());
+            array_buffer_value->CopyInto(
+                base::make_span(static_cast<uint8_t*>(backing_store->Data()),
+                                backing_store->ByteLength()));
+            return v8::ArrayBuffer::New(isolate, std::move(backing_store));
+          }},
+      message);
 
   // Simulate MessageEvent's data property. See
   // https://html.spec.whatwg.org/multipage/comms.html#messageevent
