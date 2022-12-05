@@ -5,7 +5,6 @@
 #ifndef COMPONENTS_JS_INJECTION_BROWSER_WEB_MESSAGE_REPLY_PROXY_H_
 #define COMPONENTS_JS_INJECTION_BROWSER_WEB_MESSAGE_REPLY_PROXY_H_
 
-#include "components/js_injection/common/interfaces.mojom-forward.h"
 #include "third_party/blink/public/common/messaging/string_message_codec.h"
 
 namespace content {

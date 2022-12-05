@@ -7,7 +7,6 @@
 
 #include <vector>
 
-#include "components/js_injection/common/interfaces.mojom.h"
 #include "third_party/blink/public/common/messaging/message_port_descriptor.h"
 #include "third_party/blink/public/common/messaging/string_message_codec.h"
 

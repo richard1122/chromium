@@ -71,7 +71,10 @@ source_set("common") {
 
 source_set("unit_tests") {
   testonly = true
-  sources = [ "origin_matcher_unittest.cc" ]
+  sources = [
+    "origin_matcher_unittest.cc",
+    "web_message_mojom_traits_unittest.cc",
+  ]
   deps = [
     ":common",
     ":common_mojom",

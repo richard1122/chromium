@@ -8,6 +8,7 @@
 
 #include "base/functional/overloaded.h"
 #include "components/js_injection/common/interfaces.mojom.h"
+#include "mojo/public/cpp/base/big_buffer.h"
 #include "mojo/public/cpp/bindings/union_traits.h"
 #include "third_party/abseil-cpp/absl/types/variant.h"
 #include "third_party/blink/public/common/messaging/string_message_codec.h"
@@ -35,11 +36,21 @@ bool UnionTraits<
     js_injection::mojom::JsWebMessageDataView,
     blink::WebMessagePayload>::Read(js_injection::mojom::JsWebMessageDataView r,
                                     blink::WebMessagePayload* out) {
-  std::u16string string_value;
-  if (!r.ReadStringValue(&string_value))
+  if (r.is_string_value()) {
+    std::u16string string_value;
+    if (!r.ReadStringValue(&string_value))
+      return false;
+    out->emplace<std::u16string>(std::move(string_value));
+  } else if (r.is_array_buffer_value()) {
+    mojo_base::BigBufferView big_buffer_view;
+    if (!r.ReadArrayBufferValue(&big_buffer_view))
+      return false;
+    out->emplace<std::unique_ptr<blink::WebMessageArrayBufferPayload>>(
+        blink::WebMessageArrayBufferPayload::Create(
+            mojo_base::BigBufferView::ToBigBuffer(std::move(big_buffer_view))));
+  } else {
     return false;
-
-  out->emplace<std::u16string>(std::move(string_value));
+  }
 
   return true;
 }
