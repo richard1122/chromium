@@ -147,7 +147,7 @@ bool ContainsOnlyLatin1(const std::u16string& data) {
 
 // static
 std::unique_ptr<WebMessageArrayBufferPayload>
-WebMessageArrayBufferPayload::Create(mojo_base::BigBuffer buffer) {
+WebMessageArrayBufferPayload::CreateFromBigBuffer(mojo_base::BigBuffer buffer) {
   return std::make_unique<BigBufferArrayBuffer>(std::move(buffer));
 }
 

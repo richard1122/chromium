@@ -46,7 +46,7 @@ bool UnionTraits<
     if (!r.ReadArrayBufferValue(&big_buffer_view))
       return false;
     out->emplace<std::unique_ptr<blink::WebMessageArrayBufferPayload>>(
-        blink::WebMessageArrayBufferPayload::Create(
+        blink::WebMessageArrayBufferPayload::CreateFromBigBuffer(
             mojo_base::BigBufferView::ToBigBuffer(std::move(big_buffer_view))));
   } else {
     return false;

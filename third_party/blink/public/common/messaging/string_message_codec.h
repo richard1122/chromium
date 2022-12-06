@@ -41,7 +41,7 @@ class BLINK_COMMON_EXPORT WebMessageArrayBufferPayload {
   virtual void CopyInto(base::span<uint8_t> dest) const = 0;
 
   // Create a new WebMessageArrayBufferPayload from BigBuffer.
-  static std::unique_ptr<WebMessageArrayBufferPayload> Create(
+  static std::unique_ptr<WebMessageArrayBufferPayload> CreateFromBigBuffer(
       mojo_base::BigBuffer buffer);
 
   // Create a new WebMessageArrayBufferPayload from vector for testing.
