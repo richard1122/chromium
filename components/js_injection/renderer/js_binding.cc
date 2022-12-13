@@ -4,9 +4,11 @@
 
 #include "components/js_injection/renderer/js_binding.h"
 
+#include <memory>
 #include <string>
 #include <vector>
 
+#include "base/check_op.h"
 #include "base/containers/contains.h"
 #include "base/functional/overloaded.h"
 #include "base/ranges/algorithm.h"
@@ -14,6 +16,7 @@
 #include "components/js_injection/common/interfaces.mojom-forward.h"
 #include "components/js_injection/renderer/js_communication.h"
 #include "content/public/renderer/render_frame.h"
+#include "gin/converter.h"
 #include "gin/data_object_builder.h"
 #include "gin/handle.h"
 #include "gin/object_template_builder.h"
@@ -26,8 +29,6 @@
 #include "third_party/blink/public/web/web_frame.h"
 #include "third_party/blink/public/web/web_local_frame.h"
 #include "third_party/blink/public/web/web_message_port_converter.h"
-#include "v8-local-handle.h"
-#include "v8-value.h"
 #include "v8/include/v8.h"
 
 namespace {
@@ -35,6 +36,31 @@ constexpr char kPostMessage[] = "postMessage";
 constexpr char kOnMessage[] = "onmessage";
 constexpr char kAddEventListener[] = "addEventListener";
 constexpr char kRemoveEventListener[] = "removeEventListener";
+
+class V8ArrayBufferPayload : public blink::WebMessageArrayBufferPayload {
+ public:
+  explicit V8ArrayBufferPayload(std::shared_ptr<v8::BackingStore> store)
+      : store_(std::move(store)) {
+    CHECK(store_);
+  }
+
+  size_t GetLength() const override { return store_->ByteLength(); }
+
+  absl::optional<base::span<const uint8_t>> GetAsSpanIfPossible()
+      const override {
+    return base::make_span(static_cast<const uint8_t*>(store_->Data()),
+                           store_->ByteLength());
+  }
+
+  void CopyInto(base::span<uint8_t> dest) const override {
+    CHECK_GE(dest.size(), store_->ByteLength());
+    memcpy(dest.data(), store_->Data(), store_->ByteLength());
+  }
+
+ private:
+  std::shared_ptr<v8::BackingStore> store_;
+};
+
 }  // anonymous namespace
 
 namespace js_injection {
@@ -176,8 +202,22 @@ gin::ObjectTemplateBuilder JsBinding::GetObjectTemplateBuilder(
 }
 
 void JsBinding::PostMessage(gin::Arguments* args) {
-  std::u16string message;
-  if (!args->GetNext(&message)) {
+  v8::Local<v8::Value> js_payload;
+  if (!args->GetNext(&js_payload)) {
+    args->ThrowError();
+    return;
+  }
+  blink::WebMessagePayload message_payload;
+  if (js_payload->IsString()) {
+    std::u16string string;
+    gin::Converter<std::u16string>::FromV8(args->isolate(), js_payload,
+                                           &string);
+    message_payload = std::move(string);
+  } else if (js_payload->IsArrayBuffer()) {
+    v8::Local<v8::ArrayBuffer> array_buffer = js_payload.As<v8::ArrayBuffer>();
+    message_payload =
+        std::make_unique<V8ArrayBufferPayload>(array_buffer->GetBackingStore());
+  } else {
     args->ThrowError();
     return;
   }
@@ -192,6 +232,17 @@ void JsBinding::PostMessage(gin::Arguments* args) {
   }
 
   for (auto& obj : objs) {
+    if (obj->IsArrayBuffer() && obj == js_payload) {
+      // Simulate to transfer an ArrayBuffer.
+      v8::Local<v8::ArrayBuffer> array_buffer = obj.As<v8::ArrayBuffer>();
+      if (!array_buffer->IsDetachable()) {
+        // Only when the array buffer is detachable.
+        args->ThrowError();
+        return;
+      }
+      array_buffer->Detach();
+      continue;
+    }
     absl::optional<blink::MessagePortChannel> port =
         blink::WebMessagePortConverter::DisentangleAndExtractMessagePortChannel(
             args->isolate(), obj);
@@ -208,7 +259,8 @@ void JsBinding::PostMessage(gin::Arguments* args) {
                         : nullptr;
   if (js_to_java_messaging) {
     js_to_java_messaging->PostMessage(
-        std::move(message), blink::MessagePortChannel::ReleaseHandles(ports));
+        std::move(message_payload),
+        blink::MessagePortChannel::ReleaseHandles(ports));
   }
 }
 
